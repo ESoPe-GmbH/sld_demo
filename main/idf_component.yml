@@ -8,4 +8,4 @@ dependencies:
 
   esopublic: 
     git: "https://github.com/ESoPe-GmbH/esopublic.git"
-    version: c730b08ffdcd4efbd07e5b99c3d24cd3f279c397
+    version: be16fd50abe7744481565c2c314a6e714a3e9ee0

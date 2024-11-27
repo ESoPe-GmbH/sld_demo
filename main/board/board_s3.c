@@ -80,8 +80,7 @@ static display_sld_hardware_t _sld_hw =
             .vsync = GPIO6,
             .data_width = 16,
             .disp_en = GPIO42
-        },
-        .on_frame_trans_done = NULL
+        }
     },
     .backlight = 
     {
