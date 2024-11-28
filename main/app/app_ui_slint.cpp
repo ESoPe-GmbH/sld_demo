@@ -29,8 +29,6 @@ extern "C"
 
 static std::vector<slint::platform::Rgb565Pixel>* buffer;
 
-static std::vector<slint::platform::Rgb565Pixel>* buffer2;
-
 extern "C" bool app_ui_init(void)
 {
     uint32_t width = display_device_get_width(board_lcd->display);
@@ -49,7 +47,6 @@ extern "C" bool app_ui_init(void)
     
     /* Allocate a drawing buffer */
     buffer = new std::vector<slint::platform::Rgb565Pixel>(width * height);
-    buffer2 = new std::vector<slint::platform::Rgb565Pixel>(width * height);
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_touch_handle_t touch_handle = NULL;
@@ -62,7 +59,6 @@ extern "C" bool app_ui_init(void)
         .panel_handle = panel_handle,
         .touch_handle = touch_handle, 
         .buffer1 = *buffer,
-        .buffer2 = *buffer2, 
         .color_swap_16 = false
         });
 
