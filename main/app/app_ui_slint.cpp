@@ -76,13 +76,14 @@ extern "C"
     {
         auto ui = AppWindow::create();
         /* Show it on the screen and run the event loop */
-        ui->set_version(slint::SharedString(version_get_string()));
+        ui->global<Logic>().set_version(slint::SharedString(version_get_string()));
+        ui->global<Logic>().set_display_size(slint::SharedString(board_lcd->screen_diagonal));
 
         slint::Timer timer_update_runtime;
         timer_update_runtime.start(slint::TimerMode::Repeated, 1s, [&ui]() {
             uint32_t seconds = system_get_tick_count() / 1000;
             DBG_VERBOSE((char*)"seconds = %d\n", seconds);
-            ui->set_runtime_minutes(slint::SharedString(std::format("{:02d}:{:02d}", seconds / 60, seconds % 60)));
+            ui->global<Logic>().set_runtime_minutes(slint::SharedString(std::format("{:02d}:{:02d}", seconds / 60, seconds % 60)));
         });
         ui->run();
     }
