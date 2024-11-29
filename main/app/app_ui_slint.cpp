@@ -75,6 +75,11 @@ extern "C"
     static void _task_window(void* param)
     {
         auto ui = AppWindow::create();
+        // Use this to make the UI look bigger on the 5" display when software should be scaled for multiple displays.
+        if (display_device_get_width(board_lcd->display) > 500) 
+        {
+            ui->window().dispatch_scale_factor_change_event(2.);
+        }
         /* Show it on the screen and run the event loop */
         ui->global<Logic>().set_version(slint::SharedString(version_get_string()));
         ui->global<Logic>().set_display_size(slint::SharedString(board_lcd->screen_diagonal));

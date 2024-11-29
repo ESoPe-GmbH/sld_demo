@@ -12,6 +12,7 @@ project(DISPLAYDEMOSLINT)
 
 if(${KERNEL_ADD_DEPENDENCY_SLINT})
         set(SLINT_STYLE "fluent-light")
+        set(SLINT_FONT_SIZES 12,24,48)
 
         SET(GCC_COVERAGE_LINK_FLAGS    "-z noexecstack")
         SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS} -Wl,--allow-multiple-definition")
