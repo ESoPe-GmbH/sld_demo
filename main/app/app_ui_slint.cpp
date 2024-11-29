@@ -31,6 +31,12 @@ static std::vector<slint::platform::Rgb565Pixel>* buffer;
 
 extern "C" bool app_ui_init(void)
 {
+    if(board_lcd->display == NULL)
+    {
+        DBG_ERROR("No display connected\n");
+        return false;
+    }
+
     uint32_t width = display_device_get_width(board_lcd->display);
     uint32_t height = display_device_get_height(board_lcd->display);
 
