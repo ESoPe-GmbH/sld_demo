@@ -1,4 +1,5 @@
 
+#if defined(KERNEL_USES_LVGL)
 #if defined(LV_LVGL_H_INCLUDE_SIMPLE)
 #include "lvgl.h"
 #elif defined(LV_BUILD_TEST)
@@ -154,3 +155,4 @@ const lv_image_dsc_t qr_sld_demo = {
   .data = qr_sld_demo_map,
 };
 
+#endif

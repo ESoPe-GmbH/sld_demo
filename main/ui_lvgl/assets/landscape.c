@@ -1,4 +1,5 @@
 
+#if defined(KERNEL_USES_LVGL)
 #if defined(LV_LVGL_H_INCLUDE_SIMPLE)
 #include "lvgl.h"
 #elif defined(LV_BUILD_TEST)
@@ -322,3 +323,4 @@ const lv_image_dsc_t landscape = {
   .data = landscape_map,
 };
 
+#endif
