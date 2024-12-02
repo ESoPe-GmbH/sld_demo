@@ -16,6 +16,10 @@ if(${KERNEL_ADD_DEPENDENCY_SLINT})
 
         SET(GCC_COVERAGE_LINK_FLAGS    "-z noexecstack")
         SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS} -Wl,--allow-multiple-definition")
+else()
+        add_compile_definitions(LV_LVGL_H_INCLUDE_SIMPLE=1)
+        # May be needed for 5" display to display the screen properly
+        #add_compile_definitions(DISPLAY_NUM_FB=2)
 endif()
 
 if(DEFINED ENV{FLASHERDIR})
