@@ -185,7 +185,7 @@ static void _create_screen_main(void)
     lv_obj_align(label_display_resolution, LV_ALIGN_TOP_RIGHT, -5, 20);
     // Create the title in the middle
     lv_obj_t* label = lv_label_create(scr);
-    lv_label_set_text(label, "Slint Demo");
+    lv_label_set_text(label, "LVGL Demo");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
     lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 80);
     // Create the runtime labels
