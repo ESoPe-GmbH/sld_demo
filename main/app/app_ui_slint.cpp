@@ -44,24 +44,32 @@ extern "C" bool app_ui_init(void)
 
     DBG_INFO("Initialize %d x %d\n", width, height);
 
+    // Print current information about the panel rotation
     bool swap_xy, mirror_x, mirror_y;
-    struct lcd_touch_flags_s flags;
     display_device_get_swap_xy(board_lcd->display, &swap_xy);
     display_device_get_mirror(board_lcd->display, &mirror_x, &mirror_y);
-    lcd_touch_get_flags(board_lcd->touch, &flags);
-
     DBG_INFO("Display: Swap=%d MirrorX=%d MirrorY=%d\n", swap_xy, mirror_x, mirror_y);
-    DBG_INFO("Touch: Swap=%d MirrorX=%d MirrorY=%d\n", flags.swap_xy, flags.mirror_x, flags.mirror_y);
     
-    /* Allocate a drawing buffer */
+    // Allocate a drawing buffer
     buffer = new std::vector<slint::platform::Rgb565Pixel>(width * height);
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_touch_handle_t touch_handle = NULL;
+    // Create the esp panel used in slint
     display_get_esp_panel_handle(board_lcd->display, &panel_handle);
-    lcd_touch_esp32_create(board_lcd->touch, &touch_handle);
 
-    /* Initialize Slint's ESP platform support*/
+    if(board_lcd->touch)
+    {
+        // Print current touch flags
+        struct lcd_touch_flags_s flags;
+        lcd_touch_get_flags(board_lcd->touch, &flags);
+        DBG_INFO("Touch: Swap=%d MirrorX=%d MirrorY=%d\n", flags.swap_xy, flags.mirror_x, flags.mirror_y);
+
+        // Create the Touch handle to use in slint
+        lcd_touch_esp32_create(board_lcd->touch, &touch_handle);
+    }
+
+    // Initialize Slint's ESP platform support
     slint_esp_init(SlintPlatformConfiguration{
         .size = slint::PhysicalSize({ width, height }), 
         .panel_handle = panel_handle,
