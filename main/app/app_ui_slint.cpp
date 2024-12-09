@@ -25,6 +25,8 @@ extern "C"
     #include "module/lcd_touch/lcd_touch_esp32.h"
 
     static void _task_window(void* param);
+    /// @brief Handle of the UI Task @c _task_window
+    TaskHandle_t _task_handle_ui = NULL;
 }
 
 static std::vector<slint::platform::Rgb565Pixel>* buffer;
@@ -70,10 +72,19 @@ extern "C" bool app_ui_init(void)
 
     board_set_backlight(100.0);
 
-    xTaskCreate(_task_window, "DISP", 8192 * 2, NULL, 15, NULL);
+    xTaskCreate(_task_window, "DISP", 8192 * 2, NULL, 15, &_task_handle_ui);
 
     // return eve_found;
     return true;
+}
+
+extern "C" void app_ui_stop(void)
+{
+    if(_task_handle_ui)
+    {
+        vTaskDelete(_task_handle_ui);
+        _task_handle_ui = NULL;
+    }
 }
 
 extern "C" 
