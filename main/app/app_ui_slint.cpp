@@ -33,7 +33,7 @@ static std::vector<slint::platform::Rgb565Pixel>* buffer;
 
 extern "C" bool app_ui_init(void)
 {
-    if(board_lcd->display == NULL)
+    if(board_lcd == NULL || board_lcd->display == NULL)
     {
         DBG_ERROR("No display connected\n");
         return false;
