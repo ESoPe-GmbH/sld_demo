@@ -350,6 +350,7 @@ managed_components/
 main/CMakeAutomation.exe
 .vscode/settings.json
 dependencies.lock
+components/esopublic/
 
 #SVN
 .svn
