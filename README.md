@@ -4,6 +4,10 @@ This software demonstrate the usage of the SLD display series from Schukat using
 
 The displays have can be connected to the board and used without any software change, regardless of the display size. The SLD_C_W_S3 supports the displays from 2.4" (320 x 240) to 5" (800 x 480). The board itself is driven by ESP32-S3-WROOM-1(U)-N16R8, which is a dual core Xtensa MCU with up to 240 MHz clock frequency. The board has a connector for power supply, a connector for the display and a connector for a piggy back PCB with 2 GPIOs. This enable the piggy back to make use of UART, RS485, CAN (TWAI) or I2C.
 
+## Setting up the Development Environment
+
+For setup instructions, refer to the [English setup guide](docs/ide-setup-en.md) or the [German setup guide](docs/ide-setup-de.md).
+
 ## Build
 
 The software is built using ESP-IDF 5.2 or 5.4. We recommend using VsCode with the ESP-IDF Extension for easy installation and usage of the espressif compiler. You can compile it either with the vscode function for compiling the esp-idf or by using the esp-idf prompt with the `idf.py build` command.
