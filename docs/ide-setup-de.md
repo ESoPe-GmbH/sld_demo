@@ -19,11 +19,24 @@ Das Visual C++ Redistributable wird zum Kompilieren des Projekts benötigt.
 [https://learn.microsoft.com/de-de/cpp/windows/latest-supported-vc-redist](https://learn.microsoft.com/de-de/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version:~:text=unterst%C3%BCtzte%20x86%2DVersion-,X64,-https%3A//aka.ms)
 2. Die heruntergeladene Datei ausführen und den Anweisungen folgen, um die Installation abzuschließen.
 
-## 4. ESP-IDF Erweiterung installieren
+## 4. Slint Erweiterung installieren (optional)
+Die Slint-Erweiterung für VSCode fügt Unterstützung für Slint und Live-Vorschauen hinzu.
+
 1. VSCode öffnen
 2. Die **Erweiterungen** Ansicht öffnen:
    - Über das Erweiterungen-Symbol ![VSCode Erweiterungen-Symbol](images/vscode_extension_symbol.png) in der Seitenleiste oder
    - Mit der Tastenkombination `Ctrl + Shift + X`
+3. Im Suchfeld `slint.slint` eingeben
+4. Das erste Suchergebnis **Slint** über "Install" installieren
+
+![VSCode Erweiterungen Suche mit Slint als Suchergebnis](images/vscode_slint_extension_search.png)
+
+Alternativ kann die Erweiterung auch direkt über den Visual Studio Marketplace installiert werden:
+[Slint](https://marketplace.visualstudio.com/items?itemName=slint.slint)
+
+## 5. ESP-IDF Erweiterung installieren
+1. VSCode öffnen
+2. Die **Erweiterungen** Ansicht öffnen
 3. Im Suchfeld `espressif.esp-idf-extension` eingeben
 4. Das erste Suchergebnis **ESP-IDF** über "Install" installieren
 
@@ -32,7 +45,7 @@ Das Visual C++ Redistributable wird zum Kompilieren des Projekts benötigt.
 Alternativ kann die Erweiterung auch direkt über den Visual Studio Marketplace installiert werden:
 [ESP-IDF](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension)
 
-## 5. ESP-IDF Erweiterung einrichten
+## 6. ESP-IDF Erweiterung einrichten
 Nach der Installation muss die Erweiterung noch konfiguriert werden
 
 1. ESP-IDF Explorer öffnen: In VSCode `F1` drücken, `ESP-IDF: Configure ESP-IDF Extension` eingeben und auswählen
@@ -47,4 +60,4 @@ Nach der Installation muss die Erweiterung noch konfiguriert werden
 ![ESP-IDF Setup Dialog mit Versionsauswahl und Install Button](images/esp_idf_install_full.png)
 
 
-`Stand: Visual Studio Code Version 1.95.3, ESP-IDF Erweiterung Version 1.9.0, Visual C++ Redistributable 14.42.34433.0`
+`Stand: Visual Studio Code Version 1.95.3, Slint Erweiterung Version v1.8.0, ESP-IDF Erweiterung Version 1.9.0, Visual C++ Redistributable 14.42.34433.0`
