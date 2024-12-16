@@ -5,6 +5,7 @@
 #include "module/comm/dbg.h"
 #include "module/version/version.h"
 #include "module/console/dbg/debug_console.h"
+#include "module/flash_info/flash_info.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -56,9 +57,9 @@ static debug_console_test_t _dbc_test;
 
 void app_main_init(void)
 {
-    version_set(24000, 2);
+    version_set(24002, 2);
 
-    DBG_INFO("Init SLD_Demo (Version %s [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2024 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string());
+    DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2024 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
 
     app_ui_init();
 
