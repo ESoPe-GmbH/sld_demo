@@ -18,7 +18,6 @@
 #include "module/eeprom/eeprom_i2c.h"
 
 
-#include "module/flash/flash_esp.h"
 #include "esp_partition.h"
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -61,10 +60,9 @@ static display_sld_hardware_t _sld_hw =
             .de = GPIO6,
             .hsync = GPIO15,
             .vsync = GPIO7,
-            .data_width = 16,
+            .data_width = 24,
             .disp_en = GPIO2
-        },
-        .on_frame_trans_done = NULL
+        }
     },
     .backlight = 
     {
@@ -79,7 +77,7 @@ static display_sld_hardware_t _sld_hw =
     }
 };
 
-static mcu_uart_hw_config_t _uart_hw_config_485 = {
+static mcu_uart_hw_config_t _uart_hw_config_peripheral = {
 	.unit = 1,
 	.io_tx = GPIO48,
 	.io_rx = GPIO47,
@@ -91,7 +89,7 @@ static mcu_uart_hw_config_t _uart_hw_config_485 = {
 	.transmit_interrupt_level = MCU_INT_LVL_MED
 };
 
-static mcu_uart_config_t _uart_config_485 = {
+static mcu_uart_config_t _uart_config_peripheral = {
 	.baudrate = 250000,
 	.databits = 8,
 	.parity = 'N',
@@ -111,7 +109,7 @@ display_sld_handle_t board_lcd = NULL;
 
 mcu_uart_t board_uart_peripheral;
 
-flash_device_t board_flash_device_data;
+// flash_device_t board_flash_device_data;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
@@ -146,7 +144,7 @@ void board_init(void)
     board_lcd = display_sld_init_hardware(&_sld_hw);
     DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
 
-	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_485, &_uart_config_485);
+	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
 
 	// Enable Interrupts
 	mcu_enable_interrupt();
