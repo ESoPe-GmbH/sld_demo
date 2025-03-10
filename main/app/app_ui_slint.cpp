@@ -29,7 +29,9 @@ extern "C"
     TaskHandle_t _task_handle_ui = NULL;
 }
 
-static std::vector<slint::platform::Rgb565Pixel>* buffer;
+static std::vector<slint::Rgb8Pixel>* buffer_rgb8;
+static std::vector<slint::platform::Rgb565Pixel>* buffer_rgb565;
+static std::vector<slint::platform::Rgb565Pixel>* buffer2_rgb565;
 
 extern "C" bool app_ui_init(void)
 {
@@ -50,8 +52,6 @@ extern "C" bool app_ui_init(void)
     display_device_get_mirror(board_lcd->display, &mirror_x, &mirror_y);
     DBG_INFO("Display: Swap=%d MirrorX=%d MirrorY=%d\n", swap_xy, mirror_x, mirror_y);
     
-    // Allocate a drawing buffer
-    buffer = new std::vector<slint::platform::Rgb565Pixel>(width * height);
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_touch_handle_t touch_handle = NULL;
@@ -69,16 +69,36 @@ extern "C" bool app_ui_init(void)
         lcd_touch_esp32_create(board_lcd->touch, &touch_handle);
     }
 
-    // Initialize Slint's ESP platform support
-    slint_esp_init(SlintPlatformConfiguration{
-        .size = slint::PhysicalSize({ width, height }), 
-        .panel_handle = panel_handle,
-        .touch_handle = touch_handle, 
-        .buffer1 = *buffer,
-        .color_swap_16 = false
-        });
+    if(board_lcd->data_width == 24)
+    {
+        // Allocate a drawing buffer
+        buffer_rgb8 = new std::vector<slint::Rgb8Pixel>(width * height);
+        // Initialize Slint's ESP platform support
+        slint_esp_init(SlintPlatformConfiguration<slint::Rgb8Pixel>{
+            .size = slint::PhysicalSize({ width, height }), 
+            .panel_handle = panel_handle,
+            .touch_handle = touch_handle, 
+            .buffer1 = *buffer_rgb8,
+            .byte_swap = true
+            });
+    }
+    else if(board_lcd->data_width == 16)
+    {
+        // Allocate a drawing buffer
+        buffer_rgb565 = new std::vector<slint::platform::Rgb565Pixel>(width * height);
+        // buffer2_rgb565 = new std::vector<slint::platform::Rgb565Pixel>(width * height);
+        // Initialize Slint's ESP platform support
+        slint_esp_init(SlintPlatformConfiguration<slint::platform::Rgb565Pixel>{
+            .size = slint::PhysicalSize({ width, height }), 
+            .panel_handle = panel_handle,
+            .touch_handle = touch_handle, 
+            .buffer1 = *buffer_rgb565,
+            // .buffer2 = *buffer2_rgb565,
+            .color_swap_16 = false
+            });
+    }
 
-    board_set_backlight(80.0);
+    board_set_backlight(100.0);
 
     xTaskCreate(_task_window, "DISP", 8192 * 2, NULL, 15, &_task_handle_ui);
 
