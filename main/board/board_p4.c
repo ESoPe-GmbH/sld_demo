@@ -61,7 +61,7 @@ static display_sld_hardware_t _sld_hw =
             .hsync = GPIO15,
             .vsync = GPIO7,
             .data_width = 24,
-            .disp_en = GPIO2
+            .disp_en = GPIO50
         }
     },
     .backlight = 
@@ -73,7 +73,7 @@ static display_sld_hardware_t _sld_hw =
     .touch = 
     {        
         .i2c = &_i2c_touch,
-        .io_reset = GPIO3,
+        .io_reset = GPIO51,
     }
 };
 
@@ -135,7 +135,7 @@ void board_init(void)
 	dbg_set_comm(&_comm_debug);
 #endif
 
-	i2c_init(&_i2c_touch, 0, GPIO4, GPIO13);
+	i2c_init(&_i2c_touch, 0, GPIO52, GPIO13);
 	i2c_set_frq(&_i2c_touch, 400000);
 
     mcu_io_set_dir(GPIO14, MCU_IO_DIR_IN);
@@ -144,7 +144,7 @@ void board_init(void)
     board_lcd = display_sld_init_hardware(&_sld_hw);
     DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
 
-	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
+	// board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
 
 	// Enable Interrupts
 	mcu_enable_interrupt();
