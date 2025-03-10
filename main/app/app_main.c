@@ -6,6 +6,7 @@
 #include "module/version/version.h"
 #include "module/console/dbg/debug_console.h"
 #include "module/flash_info/flash_info.h"
+#include "board/board.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -43,6 +44,15 @@ extern void app_ui_stop(void);
  * @param args_len      Number of arguments.
  */
 static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8_t args_len);
+/**
+ * @brief Callback for backlight command
+ * 
+ * @param data          Console data
+ * @param args          List of arguments
+ * @param args_len      Number of elements in args
+ * @return FUNCTION_RETURN FUNCTION_RETURN_OK on success, other on error
+ */
+static FUNCTION_RETURN _cmd_callback(console_data_t* data, char** args, uint8_t args_len);
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal variables
@@ -50,6 +60,15 @@ static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8
 
 /// Handler for test start.
 static debug_console_test_t _dbc_test;
+
+/// Structure for the pwm console command
+static console_command_t _cmd = 
+{
+    .command = "backlight",
+    .fnc_exec = _cmd_callback,
+    .use_array_param = true,
+    .explanation = "Set the backlight duty cycle"
+};
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External functions
@@ -64,6 +83,7 @@ void app_main_init(void)
     app_ui_init();
 
     debug_console_register_test_callback(&_dbc_test, NULL, _dbc_test_handle);
+	console_add_command(&_cmd);
 }
 
 #if SYSTEM_ENABLE_APP_MAIN_HANDLE
@@ -94,4 +114,17 @@ static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8
     {
         mcu_io_reset(i);
     }
+}
+
+static FUNCTION_RETURN _cmd_callback(console_data_t* data, char** args, uint8_t args_len)
+{
+	if(args_len >= 1)
+	{
+		uint8_t dc = strtol(args[0], NULL, 10);
+        
+        board_set_backlight((float)dc);
+
+		return console_set_response_dynamic(data, FUNCTION_RETURN_OK, 5, "%u", dc);
+	}
+	return FUNCTION_RETURN_PARAM_ERROR;
 }
