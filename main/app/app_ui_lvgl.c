@@ -148,7 +148,7 @@ static void _ui_init(lv_display_t *disp)
 {
     _show_screen(LCD_ACTIVE_SCREEN_MAIN);
 
-    board_set_backlight(100.0);
+    board_set_backlight(60.0);
 
     lv_timer_create(_timer_runtime, 1000, NULL);
 }
