@@ -144,7 +144,7 @@ void board_init(void)
     board_lcd = display_sld_init_hardware(&_sld_hw);
     DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
 
-	// board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
+	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
 
 	// Enable Interrupts
 	mcu_enable_interrupt();
