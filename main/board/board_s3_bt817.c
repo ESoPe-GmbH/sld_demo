@@ -10,12 +10,13 @@
 #include "mcu/sys.h"
 #include "module/console/dbg/debug_console.h"
 
-#if CONFIG_IDF_TARGET_ESP32S3 && !CONFIG_SLD_C_W_S3_BT817
+#if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
 
 #include "module/lcd_touch/lcd_touch_calibration.h"
 #include "module/lcd_touch/driver/st1633i/st1633i.h"
 #include "module/display/sld/display_sld.h"
 #include "module/eeprom/eeprom_i2c.h"
+#include "module/gui/eve/eve_lcd_esp32.h"
 
 #include "esp_partition.h"
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -63,6 +64,8 @@ static comm_t		_comm_debug;
 
 static i2c_t _i2c_touch;
 
+static eve_hw_interface_t _eve_hw = {0};
+
 static display_sld_hardware_t _sld_hw = 
 {
     .display = 
@@ -95,10 +98,12 @@ static display_sld_hardware_t _sld_hw =
     }
 };
 
+MCU_IO_PIN board_io_audio_enable = GPIO14;
+
 static mcu_uart_hw_config_t _uart_hw_config_485 = {
 	.unit = 1,
-	.io_tx = GPIO48,
-	.io_rx = GPIO47,
+	.io_tx = GPIO39,
+	.io_rx = GPIO45,
 	.io_rts = PIN_NONE,
 	.io_cts = PIN_NONE,
 	.receive_buffer_size = 8192,
@@ -127,6 +132,8 @@ display_sld_handle_t board_lcd = NULL;
 
 mcu_uart_t board_uart_peripheral;
 
+screen_device_t board_screen_device;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -151,14 +158,44 @@ void board_init(void)
 	dbg_set_comm(&_comm_debug);
 #endif
 
-	i2c_init(&_i2c_touch, 0, GPIO1, GPIO41);
+    i2c_init(&_i2c_touch, 1, GPIO48, GPIO8);
 	i2c_set_frq(&_i2c_touch, 400000);
-
-    mcu_io_set_dir(GPIO40, MCU_IO_DIR_IN);
-    _sld_hw.touch.io_int = mcu_io_interrupt_init(1, GPIO40);
 	
-    board_lcd = display_sld_init_hardware(&_sld_hw);
-    DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
+	_eve_hw.spi = mcu_spi_init(2, GPIO16, GPIO17, GPIO18, GPIO15);
+	_eve_hw.io_pd = GPIO4;
+	mcu_io_set_pullup(GPIO5, true);
+	_eve_hw.io_int = mcu_io_interrupt_init(5, GPIO5);
+	_eve_hw.io_sound_enable.pin = GPIO14;
+	_eve_hw.io_h_pwr.pin = PIN_NONE;
+	_eve_hw.enable_quad_spi = false;
+	_eve_hw.external_touch.i2c = &_i2c_touch;
+	_eve_hw.external_touch.io_reset = PIN_NONE;
+	_eve_hw.external_touch.io_int = NULL;
+	_eve_hw.external_touch.use_protothread = false;
+	
+    mcu_io_set(board_io_audio_enable, 0);
+    mcu_io_set_dir(board_io_audio_enable, MCU_IO_DIR_OUT);
+
+	screen_device_config_t config = 
+	{
+		.hw = _eve_hw,
+		.has_touch = true,
+		.rotate = false,
+		.type = EVE_DISPLAY_TYPE_SMM
+	};
+
+	FUNCTION_RETURN ret = screen_device_init(&board_screen_device, &config);
+	if(ret == FUNCTION_RETURN_OK)
+	{
+		DBG_INFO("Screen device initialized\n");
+		// TODO: Create the Interface for board_lcd
+		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display);
+		
+	}
+	else
+	{
+		DBG_ERROR("Screen device not initialized\n");
+	}
 
 	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_485, &_uart_config_485);
 

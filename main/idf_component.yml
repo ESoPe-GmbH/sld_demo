@@ -1,6 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  esope-gmbh/esopublic: "^24.1.0"
+  # esope-gmbh/esopublic: "^24.1.0"
   #lvgl/lvgl: "^9.1.0"
   slint/slint: "^1.10.0"
   ## Required IDF version

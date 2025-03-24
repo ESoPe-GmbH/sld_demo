@@ -22,12 +22,23 @@
 #include "module_public.h"
 #include "module_include_public.h"
 #include "module/comm/i2c/i2c.h"
-#include"module/display/sld/display_sld.h"
+#include "module/display/sld/display_sld.h"
+#if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
+#include "module/gui/eve/eve.h"
+#include "module/gui/eve_ui/screen.h"
+#endif
 
 /// @brief Handle for SLD connection. Contains the display, the touch and the pwm handle (Backlight).
 extern display_sld_handle_t board_lcd;
 /// @brief Handle for the uart that can be used for external communication.
 extern mcu_uart_t board_uart_peripheral;
+
+#if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
+
+extern screen_device_t board_screen_device;
+
+#endif
+
 
 /**
  * @brief 		Initializes the mcu and all periphery assigned to the used board. Is automatically called in sys.c at first step of the main.

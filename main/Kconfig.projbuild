@@ -1,0 +1,23 @@
+menu "SLD Demo configuration"
+
+    config SLD_C_W_S3_BT817
+        bool "Use SLD_C_W_S3_BT817 board instead of SLD_C_W_S3"
+        # depends on CONFIG_IDF_TARGET_ESP32S3
+        # depends on CONFIG_IDF_TARGET_ESP32S3
+        default n
+        help
+            Set this, when using the SLD_C_W_S3_BT817 board instead of SLD_C_W_S3.
+
+    config USE_SLINT
+        bool "Use Slint as graphic framework"
+        default y
+        help
+            Set this to use slint, but make sure to enable slint in idf_component.py
+
+    config USE_LVGL
+        bool "Use LVGL as graphic framework"
+        default n
+        help
+            Set this to use lvgl, but make sure to enable lvgl in idf_component.py
+
+endmenu
