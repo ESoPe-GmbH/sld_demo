@@ -7,6 +7,7 @@
 #include "module/console/dbg/debug_console.h"
 #include "module/flash_info/flash_info.h"
 #include "board/board.h"
+#include "app_webserver.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -84,6 +85,10 @@ void app_main_init(void)
     console_init(&_console_data_peripheral, &board_comm_peripheral);
 
     app_ui_init();
+
+#if MCU_PERIPHERY_ENABLE_WIFI
+    app_webserver_init();
+#endif
 
     debug_console_register_test_callback(&_dbc_test, NULL, _dbc_test_handle);
 	console_add_command(&_cmd);
