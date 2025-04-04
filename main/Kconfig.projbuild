@@ -1,0 +1,42 @@
+menu "SLD Demo configuration"
+
+    config SLD_DEMO_WEBSERVER_PORT
+        int "Webserver port"
+        default 80
+        help
+            Set this to the webserver port you want to use.
+
+    config SLD_DEMO_WIFI_SSID
+        string "WiFi SSID"
+        default "SLD_DEMO_WIFI_SSID"
+        help
+            Set this to the WiFi SSID you want to connect to.
+
+    config SLD_DEMO_WIFI_PASSWORD
+        string "WiFi Password"
+        default "SLD_DEMO_WIFI_PASSWORD"
+        help
+            Set this to the WiFi password you want to connect to.
+
+    config SLD_DEMO_WIFI_AP_ENABLE
+        bool "Enable WiFi hotspot"
+        default y
+        help
+            Set this to enable the WiFi hotspot.
+            This will create a hotspot with the SSID "SLD_DEMO_WIFI_HOTSPOT"
+
+    config SLD_DEMO_WIFI_AP_SSID
+        depends on SLD_DEMO_WIFI_AP_ENABLE
+        string "WiFi hotspot SSID"
+        default "SLD_DEMO_WIFI_AP_SSID"
+        help
+            Set this to the WiFi hotspot SSID you want to create.
+
+    config SLD_DEMO_WIFI_AP_PASSWORD
+        depends on SLD_DEMO_WIFI_AP_ENABLE
+        string "WiFi hotspot Password"
+        default "12345678"
+        help
+            Set this to the WiFi hotspot password you want to create.
+
+endmenu

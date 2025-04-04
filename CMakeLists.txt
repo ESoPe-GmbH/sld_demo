@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.5)
 set(CCACHE_ENABLE "1")
 set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
 
+set(CONFIG_MY_PROJECT_KCONFIG "Kconfig")
+
 set(KERNEL_ADD_DEPENDENCY_SLINT true)
 # Needed for lvgl
 add_compile_definitions(LV_LVGL_H_INCLUDE_SIMPLE=1)
