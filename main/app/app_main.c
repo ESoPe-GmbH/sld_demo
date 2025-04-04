@@ -70,6 +70,8 @@ static console_command_t _cmd =
     .explanation = "Set the backlight duty cycle"
 };
 
+static console_data_t _console_data_peripheral;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -79,6 +81,7 @@ void app_main_init(void)
     version_set(24002, 2);
 
     DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2024 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
+    console_init(&_console_data_peripheral, &board_comm_peripheral);
 
     app_ui_init();
 
