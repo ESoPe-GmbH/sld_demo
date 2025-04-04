@@ -79,9 +79,11 @@ static console_data_t _console_data_peripheral;
 
 void app_main_init(void)
 {
-    version_set(24002, 2);
+    version_set(25000, 2);
 
-    DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2024 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
+    DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2025 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
+
+    // Attach the console to the peripheral UART.
     console_init(&_console_data_peripheral, &board_comm_peripheral);
 
     app_ui_init();
