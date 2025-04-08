@@ -7,6 +7,7 @@
 #include "module/console/dbg/debug_console.h"
 #include "module/flash_info/flash_info.h"
 #include "board/board.h"
+#include "app_webserver.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -70,17 +71,26 @@ static console_command_t _cmd =
     .explanation = "Set the backlight duty cycle"
 };
 
+static console_data_t _console_data_peripheral;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void app_main_init(void)
 {
-    version_set(24002, 2);
+    version_set(25000, 2);
 
-    DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2024 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
+    DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2025 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
+
+    // Attach the console to the peripheral UART.
+    console_init(&_console_data_peripheral, &board_comm_peripheral);
 
     app_ui_init();
+
+#if MCU_PERIPHERY_ENABLE_WIFI
+    app_webserver_init();
+#endif
 
     debug_console_register_test_callback(&_dbc_test, NULL, _dbc_test_handle);
 	console_add_command(&_cmd);

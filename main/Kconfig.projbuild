@@ -2,22 +2,47 @@ menu "SLD Demo configuration"
 
     config SLD_C_W_S3_BT817
         bool "Use SLD_C_W_S3_BT817 board instead of SLD_C_W_S3"
-        # depends on CONFIG_IDF_TARGET_ESP32S3
-        # depends on CONFIG_IDF_TARGET_ESP32S3
         default n
         help
             Set this, when using the SLD_C_W_S3_BT817 board instead of SLD_C_W_S3.
 
-    config USE_SLINT
-        bool "Use Slint as graphic framework"
+    config SLD_DEMO_WEBSERVER_PORT
+        int "Webserver port"
+        default 80
+        help
+            Set this to the webserver port you want to use.
+
+    config SLD_DEMO_WIFI_SSID
+        string "WiFi SSID"
+        default "SLD_DEMO_WIFI_SSID"
+        help
+            Set this to the WiFi SSID you want to connect to.
+
+    config SLD_DEMO_WIFI_PASSWORD
+        string "WiFi Password"
+        default "SLD_DEMO_WIFI_PASSWORD"
+        help
+            Set this to the WiFi password you want to connect to.
+
+    config SLD_DEMO_WIFI_AP_ENABLE
+        bool "Enable WiFi hotspot"
         default y
         help
-            Set this to use slint, but make sure to enable slint in idf_component.py
+            Set this to enable the WiFi hotspot.
+            This will create a hotspot with the SSID "SLD_DEMO_WIFI_HOTSPOT"
 
-    config USE_LVGL
-        bool "Use LVGL as graphic framework"
-        default n
+    config SLD_DEMO_WIFI_AP_SSID
+        depends on SLD_DEMO_WIFI_AP_ENABLE
+        string "WiFi hotspot SSID"
+        default "SLD_DEMO_WIFI_AP_SSID"
         help
-            Set this to use lvgl, but make sure to enable lvgl in idf_component.py
+            Set this to the WiFi hotspot SSID you want to create.
+
+    config SLD_DEMO_WIFI_AP_PASSWORD
+        depends on SLD_DEMO_WIFI_AP_ENABLE
+        string "WiFi hotspot Password"
+        default "12345678"
+        help
+            Set this to the WiFi hotspot password you want to create.
 
 endmenu

@@ -32,6 +32,8 @@
 extern display_sld_handle_t board_lcd;
 /// @brief Handle for the uart that can be used for external communication.
 extern mcu_uart_t board_uart_peripheral;
+/// @brief Comm handle for the peripheral communication, using board_uart_peripheral.
+extern comm_t board_comm_peripheral;
 
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
 

@@ -1,6 +1,6 @@
 file(GLOB_RECURSE srcs *.c *.cpp)
 
-set(MAIN_REQUIRES esopublic esp_lcd mbedtls)
+set(MAIN_REQUIRES esopublic esp_lcd mbedtls esp_wifi esp_http_server app_update json)
 
 if(DEFINED CONFIG_LV_COLOR_DEPTH AND NOT DEFINED KERNEL_ADD_DEPENDENCY_LVGL AND NOT DEFINED KERNEL_ADD_DEPENDENCY_SLINT)
     set(KERNEL_ADD_DEPENDENCY_LVGL true)
