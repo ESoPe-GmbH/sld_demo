@@ -7,7 +7,7 @@ set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
 
 set(CONFIG_MY_PROJECT_KCONFIG "Kconfig")
 
-set(KERNEL_ADD_DEPENDENCY_SLINT true)
+# set(KERNEL_ADD_DEPENDENCY_SLINT true)
 # set(KERNEL_ADD_DEPENDENCY_LVGL true)
 # Needed for lvgl
 add_compile_definitions(LV_LVGL_H_INCLUDE_SIMPLE=1)
