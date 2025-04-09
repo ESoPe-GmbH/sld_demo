@@ -12,7 +12,7 @@ set(KERNEL_ADD_DEPENDENCY_LVGL true)
 # Needed for lvgl
 add_compile_definitions(LV_LVGL_H_INCLUDE_SIMPLE=1)
 # May be needed for 5" display to display the screen properly when using lvgl
-#add_compile_definitions(DISPLAY_NUM_FB=2)
+add_compile_definitions(DISPLAY_NUM_FB=2)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(DISPLAYDEMOSLINT)
