@@ -24,6 +24,7 @@
 #include "module/comm/i2c/i2c.h"
 #include "module/display/sld/display_sld.h"
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
+#include "module/util/pmod.h"
 #include "module/gui/eve/eve.h"
 #include "module/gui/eve_ui/screen.h"
 #endif

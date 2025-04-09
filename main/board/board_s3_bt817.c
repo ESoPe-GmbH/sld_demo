@@ -16,6 +16,7 @@
 #include "module/lcd_touch/driver/st1633i/st1633i.h"
 #include "module/display/sld/display_sld.h"
 #include "module/eeprom/eeprom_i2c.h"
+#include "module/gui/eve/eve.h"
 #include "module/gui/eve/eve_lcd_esp32.h"
 
 #include "esp_partition.h"
@@ -23,24 +24,6 @@
 // Internal definitions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-#define LCD_IO_R4 12
-#define LCD_IO_R3 19
-#define LCD_IO_R2 13
-#define LCD_IO_R1 20
-#define LCD_IO_R0 14
-
-#define LCD_IO_G5 10
-#define LCD_IO_G4 18
-#define LCD_IO_G3 11
-#define LCD_IO_G2 3
-#define LCD_IO_G1 21
-#define LCD_IO_G0 8
-
-#define LCD_IO_B4 7
-#define LCD_IO_B3 16
-#define LCD_IO_B2 46
-#define LCD_IO_B1 17
-#define LCD_IO_B0 9
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal structures and enums
@@ -66,60 +49,6 @@ static i2c_t _i2c_touch;
 
 static eve_hw_interface_t _eve_hw = {0};
 
-static display_sld_hardware_t _sld_hw = 
-{
-    .display = 
-    {
-        .display = DISPLAY_DEVICE_SLD,
-        .interface = DISPLAY_INTERFACE_RGB,
-        .rgb = 
-        {
-            .r = {LCD_IO_R0, LCD_IO_R1, LCD_IO_R2, LCD_IO_R3, LCD_IO_R4, PIN_NONE, PIN_NONE, PIN_NONE},
-            .g = {LCD_IO_G0, LCD_IO_G1, LCD_IO_G2, LCD_IO_G3, LCD_IO_G4, LCD_IO_G5, PIN_NONE, PIN_NONE},
-            .b = {LCD_IO_B0, LCD_IO_B1, LCD_IO_B2, LCD_IO_B3, LCD_IO_B4, PIN_NONE, PIN_NONE, PIN_NONE},
-            .pclk = GPIO4,
-            .de = GPIO5,
-            .hsync = GPIO15,
-            .vsync = GPIO6,
-            .data_width = 16,
-            .disp_en = GPIO42
-        }
-    },
-    .backlight = 
-    {
-        .timer_unit = 0,
-        .timer_channel = 0,
-        .output_pin = GPIO39
-    },
-    .touch = 
-    {        
-        .i2c = &_i2c_touch,
-        .io_reset = GPIO2,
-    }
-};
-
-MCU_IO_PIN board_io_audio_enable = GPIO14;
-
-static mcu_uart_hw_config_t _uart_hw_config_485 = {
-	.unit = 1,
-	.io_tx = GPIO39,
-	.io_rx = GPIO45,
-	.io_rts = PIN_NONE,
-	.io_cts = PIN_NONE,
-	.receive_buffer_size = 8192,
-	.receive_interrupt_level = MCU_INT_LVL_MED,
-	.transmit_buffer_size = 8192,
-	.transmit_interrupt_level = MCU_INT_LVL_MED
-};
-
-static mcu_uart_config_t _uart_config_485 = {
-	.baudrate = 250000,
-	.databits = 8,
-	.parity = 'N',
-	.stopbits = 1,
-	.mode = MCU_UART_MODE_UART_NO_FLOW_CONTROL
-};
-
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -133,6 +62,72 @@ display_sld_handle_t board_lcd = NULL;
 mcu_uart_t board_uart_peripheral;
 
 screen_device_t board_screen_device;
+
+MCU_IO_PIN board_io_audio_enable = GPIO14;
+
+pmod_t board_pmod_spi_1 = 
+{
+	.interface = PMOD_INTERFACE_SPI,
+	.is_extended = true,
+	.interface_num = 1,
+	.spi_mosi = GPIO10,
+	.spi_miso = GPIO9,
+	.spi_sck = GPIO11,
+	.spi_cs = GPIO12,
+	.spi_cs2 = GPIO13,
+	.spi_cs3 = GPIO14,
+	.spi_reset = GPIO47,
+	.spi_int = GPIO21
+};
+
+pmod_t board_pmod_spi_2 = 
+{
+	.interface = PMOD_INTERFACE_SPI,
+	.is_extended = true,
+	.interface_num = 1,
+	.spi_mosi = GPIO10,
+	.spi_miso = GPIO9,
+	.spi_sck = GPIO11,
+	.spi_cs = GPIO19,
+	.spi_cs2 = GPIO20,
+	.spi_cs3 = PIN_NONE,
+	.spi_reset = GPIO46,
+	.spi_int = GPIO3
+};
+
+pmod_t board_pmod_spi_3 = 
+{
+	.interface = PMOD_INTERFACE_SPI,
+	.is_extended = true,
+	.interface_num = 2,
+	.spi_mosi = GPIO16,
+	.spi_miso = GPIO17,
+	.spi_sck = GPIO18,
+	.spi_cs = GPIO15,
+	.spi_cs2 = GPIO7,
+	.spi_cs3 = GPIO6,
+	.spi_reset = GPIO4,
+	.spi_int = GPIO5
+};
+
+pmod_t board_pmod_i2c = 
+{
+	.interface = PMOD_INTERFACE_I2C,
+	.i2c_sda = GPIO45,
+	.i2c_scl = GPIO39,
+	.i2c_int = GPIO41,
+	.i2c_reset = GPIO40
+};
+
+pmod_t board_pmod_uart = 
+{
+	.interface = PMOD_INTERFACE_UART,
+	.interface_num = 1,
+	.uart_txd = GPIO1,
+	.uart_rxd = GPIO2,
+	.uart_cts = PIN_NONE,
+	.uart_rts = GPIO42
+};
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
@@ -160,19 +155,25 @@ void board_init(void)
 
     i2c_init(&_i2c_touch, 1, GPIO48, GPIO8);
 	i2c_set_frq(&_i2c_touch, 400000);
+
+	pmod_init(&board_pmod_spi_1); 
+	pmod_init(&board_pmod_spi_2);
+	pmod_init(&board_pmod_spi_3);
+	pmod_init(&board_pmod_i2c);
+	pmod_init(&board_pmod_uart);
 	
-	_eve_hw.spi = mcu_spi_init(2, GPIO16, GPIO17, GPIO18, GPIO15);
-	_eve_hw.io_pd = GPIO4;
-	mcu_io_set_pullup(GPIO5, true);
-	_eve_hw.io_int = mcu_io_interrupt_init(5, GPIO5);
-	_eve_hw.io_sound_enable.pin = GPIO14;
+	_eve_hw.spi = board_pmod_spi_3.spi;
+	_eve_hw.io_pd = board_pmod_spi_3.spi_reset;
+	mcu_io_set_pullup(board_pmod_spi_3.spi_int, true);
+	_eve_hw.io_int = mcu_io_interrupt_init(5, board_pmod_spi_3.spi_int);
+	_eve_hw.io_sound_enable.pin = board_io_audio_enable;
 	_eve_hw.io_h_pwr.pin = PIN_NONE;
 	_eve_hw.enable_quad_spi = false;
 	_eve_hw.external_touch.i2c = &_i2c_touch;
 	_eve_hw.external_touch.io_reset = PIN_NONE;
 	_eve_hw.external_touch.io_int = NULL;
 	_eve_hw.external_touch.use_protothread = false;
-	
+		
     mcu_io_set(board_io_audio_enable, 0);
     mcu_io_set_dir(board_io_audio_enable, MCU_IO_DIR_OUT);
 
@@ -189,7 +190,7 @@ void board_init(void)
 	{
 		DBG_INFO("Screen device initialized\n");
 		// TODO: Create the Interface for board_lcd
-		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display);
+		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display, &board_lcd->touch);
 		
 	}
 	else
@@ -197,15 +198,13 @@ void board_init(void)
 		DBG_ERROR("Screen device not initialized\n");
 	}
 
-	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_485, &_uart_config_485);
-
 	// Enable Interrupts
 	mcu_enable_interrupt();
 }
 
 void board_set_backlight(float pwm)
 {
-    mcu_pwm_set_duty_cycle(board_lcd->backlight, (uint32_t)(pwm * 100.0));
+    // mcu_pwm_set_duty_cycle(board_lcd->backlight, (uint32_t)(pwm * 100.0));
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
