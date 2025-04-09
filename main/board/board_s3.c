@@ -9,6 +9,7 @@
 #include "board.h"
 #include "mcu/sys.h"
 #include "module/console/dbg/debug_console.h"
+#include "sdkconfig.h"
 
 #if CONFIG_IDF_TARGET_ESP32S3 && !CONFIG_SLD_C_W_S3_BT817
 

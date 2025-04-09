@@ -1,14 +1,99 @@
 #include <stdio.h>
+#include "sdkconfig.h"
 
-#if CONFIG_SLD_C_W_S3_BT817 && !CONFIG_USE_SLINT && !CONFIG_USE_LVGL
+#if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817 && !KERNEL_USES_SLINT && !KERNEL_USES_LVGL
 
 #include "board/board.h"
 #include "module/version/version.h"
+#include "module/gui/eve_ui/screen.h"
+#include "module/gui/eve_ui/button.h"
+#include "module/gui/eve_ui/image.h"
+#include "module/gui/eve_ui/text.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+struct screen_main_s
+{
+    /// Counter that is incremented with a button.
+    uint32_t counter;
+    /// Runtime counter, that is incremented every second
+    uint32_t runtime_seconds;
+
+    char str_counter[16];
+
+    char str_runtime[16];
+
+    char str_display[16];
+
+    char str_resolution[30];
+
+    char str_version[16];
+
+    text_t text_counter_title;
+
+    text_t text_counter_value;
+
+    text_t text_runtime_title;
+
+    text_t text_runtime_value;
+
+    text_t text_display;
+
+    text_t text_resolution;
+
+    text_t text_title;
+
+    text_t text_version;
+
+    button_t button_increment;
+
+    button_t button_image;
+
+    button_t button_info;
+
+    image_t image_logo;
+
+    image_t image_button_image;
+
+    image_t image_button_info;
+};
+
+struct screen_image_s
+{
+    /// Image that is shown on the screen
+    image_t image;
+    /// Back button to go back to the main screen
+    button_t button_back;
+};
+
+struct screen_info_s
+{
+    /// QR code that is shown on the screen
+    image_t image_qr_code;
+    /// Back button to go back to the main screen
+    button_t button_back;
+
+    text_t text_title;
+
+    text_t text_subtitle;
+
+    text_t text_powered_by;
+
+    image_t image_powered_by;
+};
+
+typedef struct screen_data_s
+{
+    /// @brief Data for main screen
+    struct screen_main_s main; 
+    /// @brief Data for image screen
+    struct screen_image_s image;
+    /// @brief Data for info screen
+    struct screen_info_s info;
+    
+}screen_data_t;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal structures and enums
@@ -67,13 +152,6 @@ static void _button_handler(button_t* e);
  */
 static void _button_increment_handler(button_t* e);
 /**
- * @brief Creates a button with a default background color
- * 
- * @param parent        pointer to an object, it will be the parent of the new button
- * @return lv_obj_t*    pointer to the created button
- */
-static void _create_button(button_t* button);
-/**
  * @brief Callback set on a 1s timer thath increments the runtime
  * 
  * @param tmr           Timer that was triggered
@@ -86,10 +164,12 @@ static int _timer_runtime_handle(struct pt* pt);
 
 /// Currently shown screen.
 static LCD_ACTIVE_SCREEN_T _active_screen = LCD_ACTIVE_SCREEN_MAX;
-/// Counter that is incremented with a button.
-static uint32_t _counter = 0;
-/// Runtime counter, that is incremented every second
-static uint32_t _runtime_seconds = 0;
+
+static screen_t _screens[LCD_ACTIVE_SCREEN_MAX] = {0};
+
+static system_task_t _task_runtime = {0};
+
+static screen_data_t* _screen_data = NULL;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External Functions
@@ -97,11 +177,20 @@ static uint32_t _runtime_seconds = 0;
 
 bool app_ui_init(void)
 {
-    if(board_lcd == NULL || board_lcd->display == NULL)
+    if(board_screen_device.eve.status != EVE_STATUS_OK)
     {
         DBG_ERROR("Invalid display handle\n");
         return false;
     }
+
+    _screen_data = mcu_heap_calloc(1, sizeof(screen_data_t));
+    if(_screen_data == NULL)
+    {
+        DBG_ERROR("No memory for screen data\n");
+        return false;
+    }
+
+    system_task_init_protothread(&_task_runtime, true, _timer_runtime_handle, _screen_data);
 
     // TODO: Initialize the screen device
 
@@ -116,21 +205,40 @@ bool app_ui_init(void)
 
 static void _ui_init(void)
 {
+    _create_screen_main();
+    _create_screen_info();
+    _create_screen_image();
+
     _show_screen(LCD_ACTIVE_SCREEN_MAIN);
 
-    board_set_backlight(60.0);
-
-    // TODO: Implement the time
+    screen_device_on(&board_screen_device);
+    screen_device_set_dimming(&board_screen_device, 60);
 }
 
 static void _show_screen(LCD_ACTIVE_SCREEN_T screen)
 {
-    _active_screen = screen;
-    // TODO: Switch screen
+    if(_active_screen != screen)
+    {
+        DBG_INFO("Show %d\n", screen);
+        screen_paint(&_screens[screen], 0);
+        _active_screen = screen;
+    }
 }
 
 static void _create_screen_main(void)
 {
+    struct screen_main_s* data = &_screen_data->main;
+    screen_t* scr = &_screens[LCD_ACTIVE_SCREEN_MAIN];
+
+    uint32_t w = screen_device_get_width(&board_screen_device);
+    uint32_t h = screen_device_get_height(&board_screen_device);
+
+    screen_init_object(scr, color_get(COLOR_WHITE), NULL, NULL);
+
+    text_init(&data->text_display, w - 5, 5, data->str_display);
+    string_nprintf(data->str_display, sizeof(data->str_display), "Display: %s\"", board_screen_device.eve.sld_edid.screen_diagonal);
+    text_set_horizontal_alignment(&data->text_display, TEXT_H_ALIGNMENT_RIGHT);
+    screen_add_component(scr, &data->text_display.component);
     // TODO: Create the screen
     // // Clean the screen
     // lv_obj_t* scr = lv_screen_active();
@@ -276,39 +384,34 @@ static void _create_screen_info(void)
 
 static void _button_handler(button_t* e)
 {
-    LCD_ACTIVE_SCREEN_T screen = (LCD_ACTIVE_SCREEN_T)e->user_data;
+    LCD_ACTIVE_SCREEN_T screen = (LCD_ACTIVE_SCREEN_T)e->component.user;
     _show_screen(screen);
 }
 
 static void _button_increment_handler(button_t* e)
 {
-    _counter++;
-    // TODO: Show new counter
-    // lv_label_set_text_fmt(_lbl_counter, "%u", (unsigned int)_counter);
-    // lv_obj_invalidate(_lbl_counter);
+    screen_t* screen = (screen_t*)screen_get_from_component(&e->component);
+    screen_data_t* data = (screen_data_t*)screen->user;
+
+    data->main.counter++;
+    string_nprintf(data->main.str_counter, sizeof(data->main.str_counter), "%u", data->main.counter);
+    screen_repaint_by_component(&screen->component);
 }
 
-static void _create_button(button_t* button)
+static int _timer_runtime_handle(struct pt* pt)
 {
-    // TODO: Create button
-    // lv_obj_t* button = lv_button_create(parent);
-    // lv_obj_set_style_bg_color(button, lv_color_hex(0xB0B0B0), LV_PART_MAIN);
-    // lv_obj_set_style_bg_opa(button, 0x80, LV_PART_MAIN);
-    return button;
-}
-
-static int _timer_runtime(struct pt* pt)
-{
+    screen_data_t* data = pt->obj;
     PT_BEGIN(pt);
     while(true)
     {
-        _runtime_seconds++;
-        // TODO: Show new time
-        // if(_lbl_runtime)
-        // {
-        //     lv_label_set_text_fmt(_lbl_runtime, "%02u:%02u min", (unsigned int)(_runtime_seconds / 60), (unsigned int)(_runtime_seconds % 60));
-        //     lv_obj_invalidate(_lbl_runtime);
-        // }
+        PT_YIELD_MS(pt, 1000);
+        data->main.runtime_seconds++;
+        string_nprintf(data->main.str_runtime, sizeof(data->main.str_runtime), "%02u:%02u min", (unsigned int)(data->main.runtime_seconds / 60), (unsigned int)(data->main.runtime_seconds % 60));
+        // Only repaint the screen if it is the main screen
+        if(_active_screen == LCD_ACTIVE_SCREEN_MAIN)
+        {
+            screen_repaint(&board_screen_device);
+        }
     }
     PT_END(pt);
 }

@@ -9,6 +9,7 @@
 #include "board.h"
 #include "mcu/sys.h"
 #include "module/console/dbg/debug_console.h"
+#include "sdkconfig.h"
 
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
 
@@ -17,7 +18,9 @@
 #include "module/display/sld/display_sld.h"
 #include "module/eeprom/eeprom_i2c.h"
 #include "module/gui/eve/eve.h"
-#include "module/gui/eve/eve_lcd_esp32.h"
+// #include "module/gui/eve/eve_lcd_esp32.h"
+#include "module/gui/eve/eve.h"
+#include "module/gui/eve_ui/screen.h"
 
 #include "esp_partition.h"
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -60,6 +63,8 @@ static eve_hw_interface_t _eve_hw = {0};
 display_sld_handle_t board_lcd = NULL;
 
 mcu_uart_t board_uart_peripheral;
+
+comm_t board_comm_peripheral;
 
 screen_device_t board_screen_device;
 
@@ -162,6 +167,10 @@ void board_init(void)
 	pmod_init(&board_pmod_i2c);
 	pmod_init(&board_pmod_uart);
 	
+	board_uart_peripheral = board_pmod_uart.uart;
+	mcu_uart_set_param(board_uart_peripheral, 115200, 8, 'N', 1);
+	mcu_uart_create_comm_handler(board_uart_peripheral, &board_comm_peripheral);
+	
 	_eve_hw.spi = board_pmod_spi_3.spi;
 	_eve_hw.io_pd = board_pmod_spi_3.spi_reset;
 	mcu_io_set_pullup(board_pmod_spi_3.spi_int, true);
@@ -189,8 +198,11 @@ void board_init(void)
 	if(ret == FUNCTION_RETURN_OK)
 	{
 		DBG_INFO("Screen device initialized\n");
+
+#if KERNEL_USES_LVGL || KERNEL_USES_SLINT
 		// TODO: Create the Interface for board_lcd
 		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display, &board_lcd->touch);
+#endif
 		
 	}
 	else
@@ -204,7 +216,10 @@ void board_init(void)
 
 void board_set_backlight(float pwm)
 {
-    // mcu_pwm_set_duty_cycle(board_lcd->backlight, (uint32_t)(pwm * 100.0));
+	if(board_screen_device.eve.status == EVE_STATUS_OK)
+	{	
+    	screen_device_set_dimming(&board_screen_device, (uint8_t) pwm);
+	}
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
