@@ -9,10 +9,19 @@
 #include "module/gui/eve_ui/button.h"
 #include "module/gui/eve_ui/image.h"
 #include "module/gui/eve_ui/text.h"
+#include "module/gui/eve_ui/font.h"
+#include "resources/file_resources.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+typedef enum font_e
+{
+    FONT_LARGE = 0,
+    FONT_MEDIUM,
+    FONT_SMALL,
+}FONT_T;
 
 struct screen_main_s
 {
@@ -140,6 +149,20 @@ static void _create_screen_image(void);
  */
 static void _create_screen_info(void);
 /**
+ * @brief Get the font that is used based on the screen resolution and the font type.
+ * 
+ * @param font      Font type that should be used.
+ * @return int      Font that is used for the given type.
+ */
+static int _get_font(FONT_T font);
+/**
+ * @brief Get the spacing that is used for the given font type based on the screen resolution.
+ * 
+ * @param font      Font type that should be used.
+ * @return int      Spacing that is used for the given font type.
+ */
+static int _get_spacing(FONT_T font);
+/**
  * @brief Default button handle to show a screen. The user data of the event is a casted @c LCD_ACTIVE_SCREEN_T value that should be shown.
  * 
  * @param e     Pointer to the event data
@@ -192,8 +215,6 @@ bool app_ui_init(void)
 
     system_task_init_protothread(&_task_runtime, true, _timer_runtime_handle, _screen_data);
 
-    // TODO: Initialize the screen device
-
     _ui_init();
 
     return true;
@@ -234,152 +255,272 @@ static void _create_screen_main(void)
     uint32_t h = screen_device_get_height(&board_screen_device);
 
     screen_init_object(scr, color_get(COLOR_WHITE), NULL, NULL);
+    scr->user = (void*)_screen_data;
+
+    const file_resource_t* fr = file_resource_get_by_name("schukat-logo.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid logo resource\n");
+
+    // image_init_from_flash(&data->image_logo, 0, 0, 650, 165, IMAGE_FORMAT_RGB565, "schukat-logo.bin", (const uint8_t*)fr->content, fr->filesize - 1);
+    image_init_from_flash(&data->image_logo, 0, 0, 652, 168, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "schukat-logo.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    image_set_scalef(&data->image_logo, ((float)w/2) / (float)data->image_logo.component.size.width);
+    data->image_logo.filter = IMAGE_FILTER_BILINEAR;
+    screen_add_component(scr, &data->image_logo.component);
 
     text_init(&data->text_display, w - 5, 5, data->str_display);
+    text_set_font(&data->text_display, _get_font(FONT_SMALL));
     string_nprintf(data->str_display, sizeof(data->str_display), "Display: %s\"", board_screen_device.eve.sld_edid.screen_diagonal);
     text_set_horizontal_alignment(&data->text_display, TEXT_H_ALIGNMENT_RIGHT);
     screen_add_component(scr, &data->text_display.component);
-    // TODO: Create the screen
-    // // Clean the screen
-    // lv_obj_t* scr = lv_screen_active();
-    // lv_obj_clean(scr);
-    // lv_obj_set_style_bg_color(scr, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    // // Create the logo at the top left
-    // lv_obj_t* image_logo = lv_img_create(scr);
-    // lv_obj_align(image_logo, LV_ALIGN_TOP_LEFT, 5, 5);
-    // lv_img_set_src(image_logo, &schukat_logo);
-    // // Create the display information on the top right
-    // lv_obj_t* label_display_size = lv_label_create(scr);
-    // lv_label_set_text_fmt(label_display_size, "Display: %s\"", board_lcd->screen_diagonal);
-    // lv_obj_set_style_text_font(label_display_size, &lv_font_montserrat_10, LV_STATE_DEFAULT);
-    // lv_obj_align(label_display_size, LV_ALIGN_TOP_RIGHT, -5, 5);
-    // lv_obj_t* label_display_resolution = lv_label_create(scr);
-    // lv_label_set_text_fmt(label_display_resolution, "Resolution: %d x %d", (int)display_device_get_width(board_lcd->display), (int)display_device_get_height(board_lcd->display));
-    // lv_obj_set_style_text_font(label_display_resolution, &lv_font_montserrat_10, LV_STATE_DEFAULT);
-    // lv_obj_align(label_display_resolution, LV_ALIGN_TOP_RIGHT, -5, 20);
-    // // Create the title in the middle
-    // lv_obj_t* label = lv_label_create(scr);
-    // lv_label_set_text(label, "LVGL Demo");
-    // lv_obj_set_style_text_font(label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
-    // lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 80);
-    // // Create the runtime labels
-    // lv_obj_t* label_runtime_title = lv_label_create(scr);
-    // lv_label_set_text(label_runtime_title, "Runtime:");
-    // lv_obj_align(label_runtime_title, LV_ALIGN_LEFT_MID, 10, -10);
-    // _lbl_runtime = lv_label_create(scr);
-    // lv_label_set_text_fmt(_lbl_runtime, "%02u:%02u min", (unsigned int)(_runtime_seconds / 60), (unsigned int)(_runtime_seconds % 60));
-    // lv_obj_align(_lbl_runtime, LV_ALIGN_RIGHT_MID, -10, -10);
-    // // Create the counter labels
-    // lv_obj_t* label_counter_title = lv_label_create(scr);
-    // lv_label_set_text(label_counter_title, "Counter:");
-    // lv_obj_align(label_counter_title, LV_ALIGN_LEFT_MID, 10, 10);
-    // _lbl_counter = lv_label_create(scr);
-    // lv_label_set_text_fmt(_lbl_counter, "%u", (unsigned int)_counter);
-    // lv_obj_align(_lbl_counter, LV_ALIGN_RIGHT_MID, -10, 10);
-    // // Create the buttons
-    // lv_obj_t* buttons[3] = {0};
-    // // Create the button that increments the counter
-    // buttons[0] = _create_button(scr);
-    // lv_obj_add_event_cb(buttons[0], _button_increment_handler, LV_EVENT_CLICKED, NULL);
-    // lv_obj_align(buttons[0], LV_ALIGN_BOTTOM_LEFT, 5, -35);
-    // lv_obj_t* button_increment_label = lv_label_create(buttons[0]);
-    // lv_label_set_text(button_increment_label, "+");
-    // lv_obj_set_style_text_color(button_increment_label, lv_color_hex(0x000000), LV_PART_MAIN);
-    // lv_obj_center(button_increment_label);
-    // // Create the button that switches to LCD_ACTIVE_SCREEN_IMAGE
-    // buttons[1] = _create_button(scr);
-    // lv_obj_add_event_cb(buttons[1], _button_handler, LV_EVENT_CLICKED, (void*)LCD_ACTIVE_SCREEN_IMAGE);
-    // lv_obj_align(buttons[1], LV_ALIGN_BOTTOM_MID, 0, -35);
-    // lv_obj_remove_flag(buttons[1], LV_OBJ_FLAG_PRESS_LOCK);
-    // lv_obj_t* image_button_image = lv_img_create(buttons[1]);
-    // lv_obj_center(image_button_image);
-    // lv_img_set_src(image_button_image, &button_landscape);
-    // // Create the button that switches to LCD_ACTIVE_SCREEN_INFO
-    // buttons[2] = _create_button(scr);
-    // lv_obj_add_event_cb(buttons[2], _button_handler, LV_EVENT_CLICKED, (void*)LCD_ACTIVE_SCREEN_INFO);
-    // lv_obj_align(buttons[2], LV_ALIGN_BOTTOM_RIGHT, -5, -35);
-    // lv_obj_remove_flag(buttons[2], LV_OBJ_FLAG_PRESS_LOCK);
-    // lv_obj_t* image_button_info = lv_img_create(buttons[2]);
-    // lv_obj_center(image_button_info);
-    // lv_img_set_src(image_button_info, &esope);
-    // // Make all three buttons the same size
-    // for(int i = 0; i < 3; i++)
-    // {
-    //     lv_obj_set_width(buttons[i], display_device_get_width(board_lcd->display) / 4);
-    //     lv_obj_set_height(buttons[i], 35);
-    // }
-    // // Create the version label
-    // lv_obj_t* label_version = lv_label_create(scr);
-    // lv_label_set_text_fmt(label_version, "Version: %s", version_get_string());
-    // lv_obj_align(label_version, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+
+    text_init(&data->text_resolution, w - 5, 5 + _get_spacing(FONT_SMALL), data->str_resolution);
+    text_set_font(&data->text_resolution, _get_font(FONT_SMALL));
+    string_nprintf(data->str_resolution, sizeof(data->str_resolution), "Resolution: %d x %d", w, h);
+    text_set_horizontal_alignment(&data->text_resolution, TEXT_H_ALIGNMENT_RIGHT);
+    screen_add_component(scr, &data->text_resolution.component);
+
+    text_init(&data->text_title, w/2, h/2 - 50, "EVE Demo");
+    text_set_font(&data->text_title, _get_font(FONT_LARGE));
+    text_set_horizontal_alignment(&data->text_title, TEXT_H_ALIGNMENT_CENTER);
+    screen_add_component(scr, &data->text_title.component);
+
+    text_init(&data->text_runtime_title, 10, h/2, "Runtime:");
+    text_set_font(&data->text_runtime_title, _get_font(FONT_MEDIUM));
+    text_set_horizontal_alignment(&data->text_runtime_title, TEXT_H_ALIGNMENT_LEFT);
+    screen_add_component(scr, &data->text_runtime_title.component);
+
+    text_init(&data->text_runtime_value, w - 10, h/2, data->str_runtime);
+    text_set_font(&data->text_runtime_value, _get_font(FONT_MEDIUM));
+    string_nprintf(data->str_runtime, sizeof(data->str_runtime), "%02u:%02u min", (unsigned int)(data->runtime_seconds / 60), (unsigned int)(data->runtime_seconds % 60));
+    text_set_horizontal_alignment(&data->text_runtime_value, TEXT_H_ALIGNMENT_RIGHT);
+    screen_add_component(scr, &data->text_runtime_value.component);
+
+    text_init(&data->text_counter_title, 10, h/2 + 25, "Counter:");
+    text_set_font(&data->text_counter_title, _get_font(FONT_MEDIUM));
+    text_set_horizontal_alignment(&data->text_counter_title, TEXT_H_ALIGNMENT_LEFT);
+    screen_add_component(scr, &data->text_counter_title.component);
+
+    text_init(&data->text_counter_value, w - 10, h/2 + 25, data->str_counter);
+    text_set_font(&data->text_counter_value, _get_font(FONT_MEDIUM));
+    string_nprintf(data->str_counter, sizeof(data->str_counter), "%u", (unsigned int)data->counter);
+    text_set_horizontal_alignment(&data->text_counter_value, TEXT_H_ALIGNMENT_RIGHT);
+    screen_add_component(scr, &data->text_counter_value.component);
+
+    // y-coordinate of the buttons
+    int by = h - 5 - _get_spacing(FONT_SMALL);
+
+    button_init(&data->button_increment, 5, by, w/4, 35, "+");
+    button_set_font(&data->button_increment, _get_font(FONT_SMALL));
+    button_set_action(&data->button_increment, _button_increment_handler);
+    button_set_backgroundcolor(&data->button_increment, color_get(COLOR_LIGHT_GRAY));
+    button_set_textcolor(&data->button_increment, color_get(COLOR_BLACK));
+    component_set_alignment(&data->button_increment.component, COMPONENT_ALIGNMENT_BOTTOM);
+    screen_add_component(scr, &data->button_increment.component);
+
+    fr = file_resource_get_by_name("button_landscape.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid button resource\n");
+    image_init_from_flash(&data->image_button_image, 0, 0, 52, 32, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "button_landscape.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    button_init(&data->button_image, w/2, by, w/4, 35, NULL);
+    component_set_alignment(&data->button_image.component, COMPONENT_ALIGNMENT_CENTER_X | COMPONENT_ALIGNMENT_BOTTOM);
+    button_set_figure(&data->button_image, &data->image_button_image.component, BUTTON_FIGURE_POS_CENTER);
+    button_set_action(&data->button_image, _button_handler);
+    button_set_backgroundcolor(&data->button_image, color_get(COLOR_LIGHT_GRAY));
+    data->button_image.component.user = (void*)LCD_ACTIVE_SCREEN_IMAGE;
+    screen_add_component(scr, &data->button_image.component);
+
+    fr = file_resource_get_by_name("esope.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid esope resource\n");
+    image_init_from_flash(&data->image_button_info, 0, 0, 64, 24, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "esope.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    button_init(&data->button_info, w - 5, by, w/4, 35, NULL);
+    component_set_alignment(&data->button_info.component, COMPONENT_ALIGNMENT_RIGHT | COMPONENT_ALIGNMENT_BOTTOM);
+    button_set_figure(&data->button_info, &data->image_button_info.component, BUTTON_FIGURE_POS_CENTER);
+    button_set_action(&data->button_info, _button_handler);
+    button_set_backgroundcolor(&data->button_info, color_get(COLOR_LIGHT_GRAY));
+    data->button_info.component.user = (void*)LCD_ACTIVE_SCREEN_INFO;
+    screen_add_component(scr, &data->button_info.component);
+
+    text_init(&data->text_version, w - 5, h - 5, data->str_version);
+    text_set_font(&data->text_version, _get_font(FONT_SMALL));
+    string_nprintf(data->str_version, sizeof(data->str_version), "Version: %s", version_get_string());
+    text_set_horizontal_alignment(&data->text_version, TEXT_H_ALIGNMENT_RIGHT);
+    text_set_vertical_alignment(&data->text_version, TEXT_V_ALIGNMENT_BOTTOM);
+    screen_add_component(scr, &data->text_version.component);
 }
 
 static void _create_screen_image(void)
 {
-    // TODO: Create the screen
-    // // Clean the screen
-    // lv_obj_t* scr = lv_screen_active();
-    // lv_obj_clean(scr);
-    // lv_obj_set_style_bg_color(scr, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    // // Image shown in the center
-    // lv_obj_t* image = lv_img_create(scr);
-    // lv_obj_center(image);
-    // lv_img_set_src(image, &landscape);
-    // // Button for back
-    // lv_obj_t* button_back = _create_button(scr);
-    // lv_obj_add_event_cb(button_back, _button_handler, LV_EVENT_CLICKED, (void*)LCD_ACTIVE_SCREEN_MAIN);
-    // lv_obj_align(button_back, LV_ALIGN_TOP_LEFT, 5, 5);
-    // lv_obj_remove_flag(button_back, LV_OBJ_FLAG_PRESS_LOCK);
-    // // Label for the back button
-    // lv_obj_t* button_label = lv_label_create(button_back);
-    // lv_label_set_text(button_label, "<");
-    // lv_obj_set_style_text_color(button_label, lv_color_hex(0x000000), LV_PART_MAIN);
-    // lv_obj_center(button_label);
+    screen_t* scr = &_screens[LCD_ACTIVE_SCREEN_IMAGE];
+    struct screen_image_s* data = &_screen_data->image;
+
+    uint32_t w = screen_device_get_width(&board_screen_device);
+    uint32_t h = screen_device_get_height(&board_screen_device);
+
+    screen_init_object(scr, color_get(COLOR_WHITE), NULL, NULL);
+    scr->user = (void*)_screen_data;
+
+    const file_resource_t* fr = file_resource_get_by_name("landscape.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid landscape resource\n");
+    
+    image_init_from_flash(&data->image, w/2, h/2, 1024, 600, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "landscape.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    image_set_scale(&data->image, w, h);
+    data->image.filter = IMAGE_FILTER_BILINEAR;
+    // TODO: Scale to display size
+    component_set_alignment(&data->image.component, COMPONENT_ALIGNMENT_CENTER);
+    screen_add_component(scr, &data->image.component);
+
+    button_init(&data->button_back, 5, 5, 50, 30, "<");
+    button_set_font(&data->button_back, _get_font(FONT_SMALL));
+    button_set_action(&data->button_back, _button_handler);
+    button_set_backgroundcolor(&data->button_back, color_get(COLOR_LIGHT_GRAY));
+    button_set_textcolor(&data->button_back, color_get(COLOR_BLACK));
+    data->button_back.component.user = (void*)LCD_ACTIVE_SCREEN_MAIN;
+    screen_add_component(scr, &data->button_back.component);
 }
 
 static void _create_screen_info(void)
 {
-    // TODO: Create the screen
-    // // Clean the screen
-    // lv_obj_t* scr = lv_screen_active();
-    // lv_obj_clean(scr);
-    // lv_obj_set_style_bg_color(scr, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    // // Button for back
-    // lv_obj_t* button_back = _create_button(scr);
-    // lv_obj_add_event_cb(button_back, _button_handler, LV_EVENT_CLICKED, (void*)LCD_ACTIVE_SCREEN_MAIN);
-    // lv_obj_align(button_back, LV_ALIGN_TOP_LEFT, 5, 5);
-    // lv_obj_remove_flag(button_back, LV_OBJ_FLAG_PRESS_LOCK);
-    // // Label for the back button
-    // lv_obj_t* button_label = lv_label_create(button_back);
-    // lv_label_set_text(button_label, "<");
-    // lv_obj_set_style_text_color(button_label, lv_color_hex(0x000000), LV_PART_MAIN);
-    // lv_obj_center(button_label);
-    // // Show the header and make it wrap
-    // lv_obj_t* label = lv_label_create(scr);
-    // lv_label_set_text(label, "Demo Software and Description");
-    // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    // lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    // lv_obj_set_width(label, display_device_get_width(board_lcd->display) - 10);
-    // lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 20);
-    // // Show the description and make it wrap
-    // lv_obj_t* label2 = lv_label_create(scr);
-    // lv_label_set_text(label2, "Scan the QR-Code for the GitHub Link to this Demo.");
-    // lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
-    // lv_obj_set_style_text_align(label2, LV_TEXT_ALIGN_CENTER, 0);
-    // lv_obj_set_width(label2, display_device_get_width(board_lcd->display) - 10);
-    // lv_obj_align(label2, LV_ALIGN_TOP_MID, 0, 40);
-    // // Show the QR-Code
-    // lv_obj_t* image = lv_img_create(scr);
-    // lv_img_set_src(image, &qr_sld_demo);
-    // lv_obj_align(image, LV_ALIGN_BOTTOM_MID, 0, -40);
-    // // Show powered by ESoPe
-    // lv_obj_t* label_powered_by = lv_label_create(scr);
-    // lv_label_set_text(label_powered_by, "powered by");
-    // lv_obj_align(label_powered_by, LV_ALIGN_BOTTOM_RIGHT, -75, -5);
-    // // Create the image of ESoPe
-    // lv_obj_t* image_esope = lv_img_create(scr);
-    // lv_obj_align(image_esope, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
-    // lv_img_set_src(image_esope, &esope);
+    screen_t* scr = &_screens[LCD_ACTIVE_SCREEN_INFO];
+    struct screen_info_s* data = &_screen_data->info;
+
+    uint32_t w = screen_device_get_width(&board_screen_device);
+    uint32_t h = screen_device_get_height(&board_screen_device);
+
+    screen_init_object(scr, color_get(COLOR_WHITE), NULL, NULL);
+    scr->user = (void*)_screen_data;
+
+    button_init(&data->button_back, 5, 5, 50, 30, "<");
+    button_set_font(&data->button_back, _get_font(FONT_SMALL));
+    button_set_action(&data->button_back, _button_handler);
+    button_set_backgroundcolor(&data->button_back, color_get(COLOR_LIGHT_GRAY));
+    button_set_textcolor(&data->button_back, color_get(COLOR_BLACK));
+    data->button_back.component.user = (void*)LCD_ACTIVE_SCREEN_MAIN;
+    screen_add_component(scr, &data->button_back.component);
+
+    if(w == 320)
+    {
+        text_init(&data->text_title, w/2, h/8, "Demo Software\nand Description");
+    }
+    else
+    {
+        text_init(&data->text_title, w/2, h/8, "Demo Software and Description");
+    }
+    text_set_font(&data->text_title, _get_font(FONT_LARGE));
+    text_set_horizontal_alignment(&data->text_title, TEXT_H_ALIGNMENT_CENTER);
+    text_set_vertical_alignment(&data->text_title, TEXT_V_ALIGNMENT_BOTTOM);
+    screen_add_component(scr, &data->text_title.component);
+
+    if(w == 320)
+    {
+        text_init(&data->text_subtitle, w/2, h/8 + _get_spacing(FONT_LARGE), "Scan the QR-Code for the GitHub\nlink to this Demo.");
+    }
+    else
+    {
+        text_init(&data->text_subtitle, w/2, h/8 + 2, "Scan the QR-Code for the GitHub link to this Demo.");
+    }
+    text_set_font(&data->text_subtitle, _get_font(FONT_MEDIUM));
+    text_set_horizontal_alignment(&data->text_subtitle, TEXT_H_ALIGNMENT_CENTER);
+    text_set_vertical_alignment(&data->text_subtitle, TEXT_V_ALIGNMENT_TOP);
+    screen_add_component(scr, &data->text_subtitle.component);
+
+    const file_resource_t* fr = file_resource_get_by_name("qr_sld_demo.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid QR-Code resource\n");
+
+    // image_init_from_flash(&data->image_qr_code, w/2, h/2, 160, 161, IMAGE_FORMAT_RGB565, "qr_sld_demo.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    image_init_from_flash(&data->image_qr_code, w/2, h/2, 160, 164, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "qr_sld_demo.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    if(w == 320)
+    {
+        image_set_scale(&data->image_qr_code, 100, 100);
+    }
+    component_set_alignment(&data->image_qr_code.component, COMPONENT_ALIGNMENT_CENTER_X);
+    screen_add_component(scr, &data->image_qr_code.component);
+
+    text_init(&data->text_powered_by, w - 74, h - 5, "powered by");
+    text_set_font(&data->text_powered_by, _get_font(FONT_SMALL));
+    text_set_horizontal_alignment(&data->text_powered_by, TEXT_H_ALIGNMENT_RIGHT);
+    text_set_vertical_alignment(&data->text_powered_by, TEXT_V_ALIGNMENT_BOTTOM);
+    screen_add_component(scr, &data->text_powered_by.component);
+
+    fr = file_resource_get_by_name("esope.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid ESoPe resource\n");
+    image_init_from_flash(&data->image_powered_by, w-5, h-5, 64, 24, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "esope.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+    component_set_alignment(&data->image_powered_by.component, COMPONENT_ALIGNMENT_RIGHT | COMPONENT_ALIGNMENT_BOTTOM);
+    screen_add_component(scr, &data->image_powered_by.component);
+}
+
+static int _get_font(FONT_T font)
+{
+    int w = screen_device_get_width(&board_screen_device);
+    switch(font)
+    {
+        case FONT_LARGE:
+            if(w >= 800)
+            {
+                return 31;
+            }
+            else
+            {
+                return 29;
+            }
+        case FONT_MEDIUM:
+            if(w >= 800)
+            {
+                return 29;
+            }
+            else
+            {
+                return 27;
+            }
+        case FONT_SMALL:
+            if(w >= 800)
+            {
+                return 28;
+            }
+            else
+            {
+                return 26;
+            }
+        default:
+            break;
+    }
+    return 0;
+}
+
+static int _get_spacing(FONT_T font)
+{
+    return font_get_height(&board_screen_device.eve, _get_font(font)) + 5;
+    // int w = screen_device_get_width(&board_screen_device);
+    // switch(font)
+    // {
+    //     case FONT_LARGE:
+    //         if(w >= 800)
+    //         {
+    //             return 5;
+    //         }
+    //         else
+    //         {
+    //             return 4;
+    //         }
+    //     case FONT_MEDIUM:
+    //         if(w >= 800)
+    //         {
+    //             return 4;
+    //         }
+    //         else
+    //         {
+    //             return 3;
+    //         }
+    //     case FONT_SMALL:
+    //         if(w >= 800)
+    //         {
+    //             return 3;
+    //         }
+    //         else
+    //         {
+    //             return 2;
+    //         }
+    //     default:
+    //         break;
+    // }
+    // return 0;
 }
 
 static void _button_handler(button_t* e)
