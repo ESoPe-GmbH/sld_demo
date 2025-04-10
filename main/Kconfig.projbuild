@@ -14,13 +14,13 @@ menu "SLD Demo configuration"
 
     config SLD_DEMO_WIFI_SSID
         string "WiFi SSID"
-        default "SLD_DEMO_WIFI_SSID"
+        default ""
         help
             Set this to the WiFi SSID you want to connect to.
 
     config SLD_DEMO_WIFI_PASSWORD
         string "WiFi Password"
-        default "SLD_DEMO_WIFI_PASSWORD"
+        default ""
         help
             Set this to the WiFi password you want to connect to.
 

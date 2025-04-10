@@ -85,16 +85,33 @@ void app_webserver_init(void)
         }
     };
     esp_wifi_set_config(WIFI_IF_AP, &ap_config);
-    esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if(config.sta.ssid[0])
+    {
+        esp_wifi_set_mode(WIFI_MODE_APSTA);
+    }
+    else
+    {
+        esp_wifi_set_mode(WIFI_MODE_AP);
+    }
 #else
-    esp_wifi_set_mode(WIFI_MODE_STA);
+    if(config.sta.ssid[0])
+    {
+        esp_wifi_set_mode(WIFI_MODE_STA);
+    }
+    else
+    {
+        esp_wifi_set_mode(WIFI_MODE_NULL);
+    }
 #endif
 
 	
 	ESP_ERROR_CHECK(esp_wifi_start() );
 
-	// Uses the latest wifi configuration
-	esp_wifi_connect();
+    if(config.sta.ssid[0])
+    {
+        // Uses the latest wifi configuration
+        esp_wifi_connect();
+    }
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
     http_config.server_port = CONFIG_SLD_DEMO_WEBSERVER_PORT;
