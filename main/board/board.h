@@ -37,12 +37,23 @@ extern mcu_uart_t board_uart_peripheral;
 /// @brief Comm handle for the peripheral communication, using board_uart_peripheral.
 extern comm_t board_comm_peripheral;
 
+// BT817 pcb has more I/O for external usage.
 #if CONFIG_IDF_TARGET_ESP32S3 && CONFIG_SLD_C_W_S3_BT817
-
+/// @brief Handle for the eve screen device to use the eve functions.
 extern screen_device_t board_screen_device;
-
+/// @brief I/O for enabling the audio amplifier.
+extern MCU_IO_PIN board_io_audio_enable;
+/// @brief PMOD interface for the SPI interface 1.
+extern pmod_t board_pmod_spi_1;
+/// @brief PMOD interface for the SPI interface 2.
+extern pmod_t board_pmod_spi_2;
+/// @brief PMOD interface for the SPI interface 3. This is connected to the bt817 chip.
+extern pmod_t board_pmod_spi_3;
+/// @brief PMOD interface for the I2C interface. This is connected to the touch controller.
+extern pmod_t board_pmod_i2c;
+/// @brief PMOD interface for the UART interface. This is connected to the external UART. This is also used as @c board_uart_peripheral.
+extern pmod_t board_pmod_uart;
 #endif
-
 
 /**
  * @brief 		Initializes the mcu and all periphery assigned to the used board. Is automatically called in sys.c at first step of the main.

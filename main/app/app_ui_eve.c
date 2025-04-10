@@ -11,6 +11,7 @@
 #include "module/gui/eve_ui/text.h"
 #include "module/gui/eve_ui/font.h"
 #include "resources/file_resources.h"
+#include "module/console/dbg/debug_console.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -93,6 +94,12 @@ struct screen_info_s
     image_t image_powered_by;
 };
 
+typedef struct screen_test_s
+{
+	image_t rgb_test_image;
+	button_t test_buttons[5];
+}screen_test_t;
+
 typedef struct screen_data_s
 {
     /// @brief Data for main screen
@@ -101,6 +108,8 @@ typedef struct screen_data_s
     struct screen_image_s image;
     /// @brief Data for info screen
     struct screen_info_s info;
+    /// @brief Data for test screen
+    struct screen_test_s test;
     
 }screen_data_t;
 
@@ -117,6 +126,9 @@ typedef enum
 
     /// @brief The info screen shows a qr code and an info text
     LCD_ACTIVE_SCREEN_INFO,
+
+    /// @brief The test screen shows a test image and 5 buttons that needs to be pressed.
+    LCD_ACTIVE_SCREEN_TEST,
 
     /// @brief Limiter of the enum
     LCD_ACTIVE_SCREEN_MAX
@@ -149,6 +161,10 @@ static void _create_screen_image(void);
  */
 static void _create_screen_info(void);
 /**
+ * @brief Create the screen according to @c LCD_ACTIVE_SCREEN_TEST 
+ */
+static void _create_screen_test(void);
+/**
  * @brief Get the font that is used based on the screen resolution and the font type.
  * 
  * @param font      Font type that should be used.
@@ -180,6 +196,31 @@ static void _button_increment_handler(button_t* e);
  * @param tmr           Timer that was triggered
  */
 static int _timer_runtime_handle(struct pt* pt);
+/**
+ * Callback function for the test buttons, which makes the button invisible
+ * 
+ * @param b 			Pointer to the button that was pressed
+ */
+
+static void _test_button_handler(button_t* b);
+/**
+ * @brief Console for changing the screens.
+ * 
+ * @param data          Console data
+ * @param args          List of arguments
+ * @param args_len      Number of elements in args
+ * @return FUNCTION_RETURN FUNCTION_RETURN_OK on success, other on error
+ */
+static FUNCTION_RETURN _cmd_console(console_data_t* data, char** args, uint8_t args_len);
+/**
+ * @brief Callback function that is called upon "test start" to show the test screen.
+ * 
+ * @param obj           Custom object pointer from debug_console_test_t.
+ * @param data          Pointer to the console.
+ * @param args          List of arguments.
+ * @param args_len      Number of arguments.
+ */
+static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8_t args_len);
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal variables
@@ -193,6 +234,20 @@ static screen_t _screens[LCD_ACTIVE_SCREEN_MAX] = {0};
 static system_task_t _task_runtime = {0};
 
 static screen_data_t* _screen_data = NULL;
+
+/// Bitmask that indicates which button were pressed.
+/// When this is 0b11111, all buttons were pressed and the test was successfull
+static int _test_pressed_buttons = 0b00000;
+
+/// Structure for the display console command
+static console_command_t _cmd = {
+		.command = "display",
+		.fnc_exec = _cmd_console,
+		.use_array_param = true,
+		.explanation = "Test Interface: start get show"
+};
+/// Handler for test start.
+static debug_console_test_t _dbc_test;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External Functions
@@ -213,6 +268,9 @@ bool app_ui_init(void)
         return false;
     }
 
+	console_add_command(&_cmd);
+    debug_console_register_test_callback(&_dbc_test, NULL, _dbc_test_handle);
+
     system_task_init_protothread(&_task_runtime, true, _timer_runtime_handle, _screen_data);
 
     _ui_init();
@@ -229,6 +287,7 @@ static void _ui_init(void)
     _create_screen_main();
     _create_screen_info();
     _create_screen_image();
+    _create_screen_test();
 
     _show_screen(LCD_ACTIVE_SCREEN_MAIN);
 
@@ -446,6 +505,39 @@ static void _create_screen_info(void)
     screen_add_component(scr, &data->image_powered_by.component);
 }
 
+static void _create_screen_test(void)
+{
+    screen_t* s = &_screens[LCD_ACTIVE_SCREEN_TEST];
+    struct screen_test_s* scr = &_screen_data->test;
+
+	// Initialize the screen
+	screen_init_object(s, color_get(GUI_CONFIG_DEFAULT_SCREEN_BACKCOLOR), NULL, NULL);
+	s->user = scr;
+
+	console_add_command(&_cmd);
+	uint16_t dev_w = screen_device_get_width(&board_screen_device);
+	uint16_t dev_h = screen_device_get_height(&board_screen_device);
+	uint8_t button_cnt = 0;
+
+    const file_resource_t* fr = file_resource_get_by_name("rgb.raw");
+    ASSERT_RET(fr, NO_ACTION, NO_RETURN, "Invalid rgb resource\n");
+    image_init_from_flash(&scr->rgb_test_image, 0, 0, 320, 240, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "rgb.raw", (const uint8_t*)fr->content, fr->filesize - 1);
+	screen_add_component(s, &scr->rgb_test_image.component);
+
+	// Test buttons
+	button_init(&scr->test_buttons[button_cnt++], 10, 10, 40, 40, "1");
+	button_init(&scr->test_buttons[button_cnt++], dev_w - 10 - 40, 10, 40, 40, "2");
+	button_init(&scr->test_buttons[button_cnt++], 10, dev_h - 10 - 40, 40, 40, "3");
+	button_init(&scr->test_buttons[button_cnt++], dev_w - 10 - 40, dev_h - 10 - 40, 40, 40, "4");
+	button_init(&scr->test_buttons[button_cnt++], dev_w / 2 - 20, dev_h / 2 - 20, 40, 40, "5");
+
+	for (button_cnt = 0; button_cnt < 5; button_cnt++)
+	{
+		button_set_action(&scr->test_buttons[button_cnt], _test_button_handler);
+		screen_add_component(s, &scr->test_buttons[button_cnt].component);	
+	}
+}
+
 static int _get_font(FONT_T font)
 {
     int w = screen_device_get_width(&board_screen_device);
@@ -487,40 +579,6 @@ static int _get_font(FONT_T font)
 static int _get_spacing(FONT_T font)
 {
     return font_get_height(&board_screen_device.eve, _get_font(font)) + 5;
-    // int w = screen_device_get_width(&board_screen_device);
-    // switch(font)
-    // {
-    //     case FONT_LARGE:
-    //         if(w >= 800)
-    //         {
-    //             return 5;
-    //         }
-    //         else
-    //         {
-    //             return 4;
-    //         }
-    //     case FONT_MEDIUM:
-    //         if(w >= 800)
-    //         {
-    //             return 4;
-    //         }
-    //         else
-    //         {
-    //             return 3;
-    //         }
-    //     case FONT_SMALL:
-    //         if(w >= 800)
-    //         {
-    //             return 3;
-    //         }
-    //         else
-    //         {
-    //             return 2;
-    //         }
-    //     default:
-    //         break;
-    // }
-    // return 0;
 }
 
 static void _button_handler(button_t* e)
@@ -555,6 +613,56 @@ static int _timer_runtime_handle(struct pt* pt)
         }
     }
     PT_END(pt);
+}
+
+static void _test_button_handler(button_t* b)
+{
+	uint8_t button_num = (uint8_t)strtol(b->text, NULL, 10) - 1;
+
+	_test_pressed_buttons |= (1 << button_num);
+
+	b->component.is_visible = false;
+}
+
+static FUNCTION_RETURN _cmd_console(console_data_t* data, char** args, uint8_t args_len)
+{
+	if(args_len < 1)
+	{
+		return console_set_response_static(data, FUNCTION_RETURN_PARAM_ERROR, "Not enough arguments");
+	}	
+
+	if(strcmp(args[0], "start") == 0)
+	{
+        _show_screen(LCD_ACTIVE_SCREEN_TEST);
+	}
+	else if(strcmp(args[0], "get") == 0)
+	{
+		return console_set_response_dynamic(data, FUNCTION_RETURN_OK, 7, "get %d", _test_pressed_buttons);
+	}
+    else if(strcmp(args[0], "show") == 0)
+    {
+        if(args_len < 2)
+        {
+            return console_set_response_static(data, FUNCTION_RETURN_PARAM_ERROR, "Not enough arguments");
+        }
+        LCD_ACTIVE_SCREEN_T screen = (LCD_ACTIVE_SCREEN_T)strtol(args[1], NULL, 10);
+        if(screen >= LCD_ACTIVE_SCREEN_MAX)
+        {
+            return console_set_response_static(data, FUNCTION_RETURN_PARAM_ERROR, "Invalid screen number");
+        }
+        _show_screen(screen);
+    }
+	else
+	{
+		return console_set_response_static(data, FUNCTION_RETURN_PARAM_ERROR, "Invalid subcommand");
+	}
+	
+	return FUNCTION_RETURN_OK;
+}
+
+static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8_t args_len)
+{
+    _show_screen(LCD_ACTIVE_SCREEN_TEST);
 }
 
 #endif
