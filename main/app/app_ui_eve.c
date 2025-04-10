@@ -422,7 +422,6 @@ static void _create_screen_image(void)
     image_init_from_flash(&data->image, w/2, h/2, 1024, 600, IMAGE_FORMAT_COMPRESSED_RGBA_ASTC_4x4_KHR, "landscape.raw", (const uint8_t*)fr->content, fr->filesize - 1);
     image_set_scale(&data->image, w, h);
     data->image.filter = IMAGE_FILTER_BILINEAR;
-    // TODO: Scale to display size
     component_set_alignment(&data->image.component, COMPONENT_ALIGNMENT_CENTER);
     screen_add_component(scr, &data->image.component);
 
