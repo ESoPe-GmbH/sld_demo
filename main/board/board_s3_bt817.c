@@ -199,9 +199,6 @@ void board_init(void)
 	{
 		DBG_INFO("Screen device initialized\n");
 
-		ret = eve_init_flash(&board_screen_device.eve);
-		DBG_INFO("eve_init_flash -> %d\n", ret);
-
 #if KERNEL_USES_LVGL || KERNEL_USES_SLINT
 		// TODO: Create the Interface for board_lcd
 		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display, &board_lcd->touch);
@@ -211,6 +208,12 @@ void board_init(void)
 	else
 	{
 		DBG_ERROR("Screen device not initialized\n");
+	}
+
+	if(board_screen_device.eve.status == EVE_STATUS_OK || board_screen_device.eve.status == EVE_STATUS_READING_EDID_FAILED)
+	{
+		ret = eve_init_flash(&board_screen_device.eve);
+		DBG_INFO("eve_init_flash -> %d\n", ret);
 	}
 
 	// Enable Interrupts
