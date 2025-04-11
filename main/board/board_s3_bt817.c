@@ -18,7 +18,9 @@
 #include "module/display/sld/display_sld.h"
 #include "module/eeprom/eeprom_i2c.h"
 #include "module/gui/eve/eve.h"
-// #include "module/gui/eve/eve_lcd_esp32.h"
+#if KERNEL_USES_LVGL || KERNEL_USES_SLINT
+#include "module/gui/eve/eve_lcd.h"
+#endif
 #include "module/gui/eve/eve.h"
 #include "module/gui/eve_ui/screen.h"
 
@@ -200,8 +202,17 @@ void board_init(void)
 		DBG_INFO("Screen device initialized\n");
 
 #if KERNEL_USES_LVGL || KERNEL_USES_SLINT
-		// TODO: Create the Interface for board_lcd
-		eve_lcd_esp32_create(&board_screen_device, &board_lcd->display, &board_lcd->touch);
+		ret = eve_lcd_create(&board_screen_device, &board_lcd);
+
+		if(ret == FUNCTION_RETURN_OK)
+		{
+			DBG_INFO("eve_lcd_create OK\n");
+    		// mcu_pwm_t backlight;
+		}
+		else
+		{
+			DBG_ERROR("eve_lcd_create failed\n");
+		}
 #endif
 		
 	}
