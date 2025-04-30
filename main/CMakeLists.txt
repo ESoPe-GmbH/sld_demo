@@ -6,6 +6,11 @@ if(DEFINED CONFIG_LV_COLOR_DEPTH AND NOT DEFINED KERNEL_ADD_DEPENDENCY_LVGL AND 
     set(KERNEL_ADD_DEPENDENCY_LVGL true)
 endif()
 
+if(${IDF_TARGET} STREQUAL "esp32p4")
+    message("ESP32P4 detected")
+    list(APPEND MAIN_REQUIRES esp_driver_ppa)
+endif()
+
 if(${KERNEL_ADD_DEPENDENCY_LVGL})
     list(APPEND MAIN_REQUIRES lvgl__lvgl)
 endif()

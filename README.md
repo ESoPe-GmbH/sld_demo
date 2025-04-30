@@ -29,9 +29,11 @@ The board itself is driven by ESP32-S3-WROOM-1(U)-N16R8, which is a dual core Xt
 
 The board itself is driven by ESP32-S3-WROOM-1(U)-N16R8, which is a dual core Xtensa MCU with up to 240 MHz clock frequency. The display is driven by BT817 graphic chip, to control the bigger displays and have more free GPIO. The board has a connector for power supply, a connector for the display and a connector for a piggy back PCB with 19 GPIOs and the BT817 audio output.
 
-### SLD_C_W_P4
+### SLD_C_W_P4_C6
 
 The board itself is driven by ESP32-P4, which is a dual core RISC-V MCU with up to 400 MHz clock frequency. The board has a connector for power supply, a connector for the display and a connector for a piggy back PCB with 2 GPIOs. This enable the piggy back to make use of UART, RS485, CAN (TWAI) or I2C. The pcb contains a MIPI-CSI interface to connect a camera and an ESP32-C6 for wifi communication.
+
+To create the ESP32-C6 firmware, you can follow [this](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/esp32_p4_function_ev_board.md#5-flashing-esp32-c6) instruction from Espressif. The SLD_C_W_P4_C6 uses the same pins for the ESP32-C6 as the function board.
 
 ## Build
 

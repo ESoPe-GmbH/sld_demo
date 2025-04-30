@@ -1,16 +1,21 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  #lvgl/lvgl: "^9.1.0"
+  # lvgl/lvgl: "^9.1.0"
   esope-gmbh/esopublic: ^25.1.0
   slint/slint: "^1.10.0"
   ## Required IDF version
   idf:
     version: '>=5.2.0'
-  espressif/esp_wifi_remote:
-    version: '*'
+  esp_video:
+    version: "0.*"
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_hosted:
+    git: https://github.com/TiKoESoPe/esp-hosted-mcu.git
+    version: bugfix/reset-active-high-low
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_wifi_remote:
     version: '*'
     rules:
       - if: "target in [esp32p4]"

@@ -28,7 +28,7 @@ endif()
 if(DEFINED ENV{FLASHERDIR})
         # The following line is needed when creating eso files in the format of ESoPe GmbH. For this you need the Flasher tool of ESoPe GmbH.
         # This is needed to use the secure software update mechanisms implemented from ESoPe.
-        add_custom_target(${PROJECT_NAME} ALL 
+        add_custom_target(${PROJECT_NAME} ALL
                 COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config.json"
                 COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_compressed.json"
                 )

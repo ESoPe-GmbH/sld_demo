@@ -9,6 +9,7 @@
 #include "board/board.h"
 #include "board/board_test.h"
 #include "app_webserver.h"
+#include "app_camera.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -82,17 +83,21 @@ static console_data_t _console_data_peripheral;
 
 void app_main_init(void)
 {
-    version_set(25001, 2);
+    version_set(25002, 2);
 
     DBG_INFO("Init SLD_Demo (Version %s Serial %u [" __DATE__ " " __TIME__ "]). Urheberrecht 2018-2025 ESoPe GmbH, Alle Rechte vorbehalten\n", version_get_string(), flash_info_get_hardware_id());
 
     // Attach the console to the peripheral UART.
     console_init(&_console_data_peripheral, &board_comm_peripheral);
 
-    app_ui_init();
+    // app_ui_init();
 
 #if MCU_PERIPHERY_ENABLE_WIFI
     app_webserver_init();
+#endif
+
+#if CONFIG_IDF_TARGET_ESP32P4
+    app_camera_init();
 #endif
 
     board_test_init();
