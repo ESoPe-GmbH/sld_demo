@@ -65,11 +65,13 @@
 // Prototypes
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static void _task_camera_capture(void *arg);
+
 static esp_err_t _camera_capture_stream(void);
 
 static void _memcpy_bgr_swap(void* dst, void* src, size_t length);
 
-static bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx);
+// static bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx);
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal variables
@@ -199,6 +201,12 @@ static ppa_client_handle_t _ppa_handle = NULL;
 
 static EventGroupHandle_t _event_group = NULL;
 
+static bool _is_capturing = false;
+
+static bool _has_camera = false;
+
+static camera_buffer_t _buffer = {0};
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -221,7 +229,7 @@ void app_camera_init(void)
         return;
     }
 
-    display_set_event_callback(board_lcd->display, _cb_display_event, NULL);
+    // display_set_event_callback(board_lcd->display, _cb_display_event, NULL);
 
     ret = esp_video_init(&cam_config);
     if (ret != ESP_OK) {
@@ -247,19 +255,102 @@ void app_camera_init(void)
         return;
     }
 
-    ret = _camera_capture_stream();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
-        esp_video_deinit();
-        ppa_unregister_client(_ppa_handle);
-        return;
+    // ret = _camera_capture_stream();
+    // if (ret != ESP_OK) {
+    //     ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
+    //     esp_video_deinit();
+    //     ppa_unregister_client(_ppa_handle);
+    //     return;
+    // }
+
+    _has_camera = true;
+}
+
+FUNCTION_RETURN_T app_camera_start(const camera_buffer_t* buffer)
+{
+    if(_is_capturing)
+    {
+        ESP_LOGE(TAG, "Capturing already active");
+        return FUNCTION_RETURN_NOT_READY;
     }
+
+    if (buffer == NULL) 
+    {
+        ESP_LOGE(TAG, "Buffer is NULL");
+        return FUNCTION_RETURN_PARAM_ERROR;
+    }
+
+    if (buffer->width <= 0 || buffer->height <= 0) 
+    {
+        ESP_LOGE(TAG, "Invalid image dimensions");
+        return FUNCTION_RETURN_PARAM_ERROR;
+    }
+
+    if(buffer->bytes_per_pixel < 2 || buffer->bytes_per_pixel > 3)
+    {
+        ESP_LOGE(TAG, "Invalid bytes per pixel");
+        return FUNCTION_RETURN_PARAM_ERROR;
+    }
+
+    memcpy(&_buffer, buffer, sizeof(camera_buffer_t));
+
+    if(!_has_camera) 
+    {
+        ESP_LOGE(TAG, "Camera not initialized");
+        return FUNCTION_RETURN_DEVICE_ERROR;
+    }
+
+    _is_capturing = true;
+
+    // Start the camera capture stream
+    xTaskCreate(_task_camera_capture, "CAM", 8192, NULL, 15, NULL);
+    // esp_err_t ret = _camera_capture_stream();
+    // if (ret != ESP_OK) 
+    // {
+    //     ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
+    //     return FUNCTION_RETURN_EXECUTION_ERROR;
+    // }
+
+    return FUNCTION_RETURN_OK;
+}
+
+FUNCTION_RETURN_T app_camera_stop(void)
+{
+    if(!_has_camera) 
+    {
+        ESP_LOGE(TAG, "Camera not initialized");
+        return FUNCTION_RETURN_DEVICE_ERROR;
+    }
+
+    if (_is_capturing) 
+    {
+        _is_capturing = false;
+        xEventGroupSetBits(_event_group, FLAG_CAPTURE_DONE);
+    }
+    return FUNCTION_RETURN_OK;
+}
+
+bool app_camera_is_initialized(void)
+{
+    return _has_camera;
+}
+
+bool app_camera_is_capturing(void)
+{
+    return _is_capturing;
 }
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+static void _task_camera_capture(void *arg)
+{
+    esp_err_t err = _camera_capture_stream();
+    DBG_INFO("Camera capture stream finished with error: %d", err);
+
+    vTaskDelete(NULL);
+}
 
 static esp_err_t _camera_capture_stream(void)
 {    
@@ -283,10 +374,10 @@ static esp_err_t _camera_capture_stream(void)
     const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;    
     static uint8_t* display_buffer = NULL;
 
-    uint32_t width = display_device_get_width(board_lcd->display);
-    uint32_t height = display_device_get_height(board_lcd->display);
+    // uint32_t width = display_device_get_width(board_lcd->display);
+    // uint32_t height = display_device_get_height(board_lcd->display);
 
-    display_buffer = heap_caps_aligned_alloc(MEMORY_ALIGN, 3 * width * height, MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_DMA);//mcu_heap_calloc(3, width * height);
+    display_buffer = heap_caps_aligned_alloc(MEMORY_ALIGN, _buffer.bytes_per_pixel * _buffer.width * _buffer.height, MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_DMA);//mcu_heap_calloc(3, width * height);
     if (display_buffer == NULL) 
     {
         ESP_LOGE(TAG, "failed to allocate display buffer");
@@ -380,69 +471,73 @@ static esp_err_t _camera_capture_stream(void)
         goto exit_0;
     }
 
+    EventBits_t capture_bit;
+
     ESP_LOGI(TAG, "Capture %s format frames", (char *)fmtdesc.description);
     ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
     ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
-    while (1) 
-    {
-        memset(&req, 0, sizeof(req));
-        req.count  = BUFFER_COUNT;
-        req.type   = type;
-        req.memory = MEMORY_TYPE;
-        if (ioctl(fd, VIDIOC_REQBUFS, &req) != 0) {
-            ESP_LOGE(TAG, "failed to require buffer");
+    
+    memset(&req, 0, sizeof(req));
+    req.count  = BUFFER_COUNT;
+    req.type   = type;
+    req.memory = MEMORY_TYPE;
+    if (ioctl(fd, VIDIOC_REQBUFS, &req) != 0) {
+        ESP_LOGE(TAG, "failed to require buffer");
+        ret = ESP_FAIL;
+        goto exit_0;
+    }
+
+    for (int i = 0; i < BUFFER_COUNT; i++) {
+        struct v4l2_buffer buf;
+
+        memset(&buf, 0, sizeof(buf));
+        buf.type        = type;
+        buf.memory      = MEMORY_TYPE;
+        buf.index       = i;
+        if (ioctl(fd, VIDIOC_QUERYBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "failed to query buffer");
             ret = ESP_FAIL;
             goto exit_0;
         }
 
-        for (int i = 0; i < BUFFER_COUNT; i++) {
-            struct v4l2_buffer buf;
-
-            memset(&buf, 0, sizeof(buf));
-            buf.type        = type;
-            buf.memory      = MEMORY_TYPE;
-            buf.index       = i;
-            if (ioctl(fd, VIDIOC_QUERYBUF, &buf) != 0) {
-                ESP_LOGE(TAG, "failed to query buffer");
-                ret = ESP_FAIL;
-                goto exit_0;
-            }
-
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
-            buffer[i] = heap_caps_aligned_alloc(MEMORY_ALIGN, buf.length, MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_DMA);
+        buffer[i] = heap_caps_aligned_alloc(MEMORY_ALIGN, buf.length, MALLOC_CAP_SPIRAM | MALLOC_CAP_CACHE_ALIGNED | MALLOC_CAP_DMA);
 #else
-            buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
-                                        MAP_SHARED, fd, buf.m.offset);
+        buffer[i] = (uint8_t *)mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                    MAP_SHARED, fd, buf.m.offset);
 #endif
-            if (!buffer[i]) {
-                ESP_LOGE(TAG, "failed to map buffer");
-                ret = ESP_FAIL;
-                goto exit_0;
-            }
-#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
-            else {
-                buf.m.userptr = (unsigned long)buffer[i];
-                buffer_size[i] = buf.length;
-            }
-#endif
-
-            if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
-                ESP_LOGE(TAG, "failed to queue video frame");
-                ret = ESP_FAIL;
-                goto exit_0;
-            }
-        }
-
-        if (ioctl(fd, VIDIOC_STREAMON, &type) != 0) {
-            ESP_LOGE(TAG, "failed to start stream");
+        if (!buffer[i]) {
+            ESP_LOGE(TAG, "failed to map buffer");
             ret = ESP_FAIL;
             goto exit_0;
         }
+#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+        else {
+            buf.m.userptr = (unsigned long)buffer[i];
+            buffer_size[i] = buf.length;
+        }
+#endif
+
+        if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "failed to queue video frame");
+            ret = ESP_FAIL;
+            goto exit_0;
+        }
+    }
+
+    if (ioctl(fd, VIDIOC_STREAMON, &type) != 0) {
+        ESP_LOGE(TAG, "failed to start stream");
+        ret = ESP_FAIL;
+        goto exit_0;
+    }
+
+    do
+    {
 
         frame_count = 0;
         frame_size = 0;
-        int64_t start_time_us = esp_timer_get_time();
-        while (esp_timer_get_time() - start_time_us < (CAPTURE_SECONDS * 1000 * 1000)) {
+        // int64_t start_time_us = esp_timer_get_time();
+        // while (esp_timer_get_time() - start_time_us < (CAPTURE_SECONDS * 1000 * 1000)) {
             memset(&buf, 0, sizeof(buf));
             buf.type   = type;
             buf.memory = MEMORY_TYPE;
@@ -472,19 +567,24 @@ static esp_err_t _camera_capture_stream(void)
                     .pic_h = format.fmt.pix.height,
                     // .block_w = format.fmt.pix.width,
                     // .block_h = format.fmt.pix.height,
-                    .block_w = width,
-                    .block_h = height,
+                    // .block_w = width,
+                    // .block_h = height,
+                    .block_w = _buffer.width,
+                    .block_h = _buffer.height,
                     .block_offset_x = 0,
                     .block_offset_y = 0,
                 },
                 .out = {
-                    .srm_cm = PPA_SRM_COLOR_MODE_RGB888,
+                    .srm_cm = _buffer.bytes_per_pixel == 3 ? PPA_SRM_COLOR_MODE_RGB888 : PPA_SRM_COLOR_MODE_RGB565,
                     .buffer = display_buffer,
-                    .pic_w = width,
-                    .pic_h = height,
+                    // .pic_w = width,
+                    // .pic_h = height,
+                    .pic_w = _buffer.width,
+                    .pic_h = _buffer.height,
                     .block_offset_x = 0,
                     .block_offset_y = 0,
-                    .buffer_size = width * height * 3
+                    .buffer_size = _buffer.width * _buffer.height * _buffer.bytes_per_pixel
+                    // .buffer_size = width * height * 3
                 },
                 .mode = PPA_TRANS_MODE_BLOCKING,
                 // .scale_x = (float)width / (float)format.fmt.pix.width,
@@ -495,9 +595,15 @@ static esp_err_t _camera_capture_stream(void)
             };
             ESP_LOGI(TAG, "scale_x: %f, scale_y: %f", srm_config.scale_x, srm_config.scale_y);
             ppa_do_scale_rotate_mirror(_ppa_handle, &srm_config);
-            display_device_draw_bitmap(board_lcd->display, 0, 0, width, height, display_buffer);
+            // display_device_draw_bitmap(board_lcd->display, 0, 0, width, height, display_buffer);
+            memcpy(_buffer.buffer, display_buffer, _buffer.bytes_per_pixel * _buffer.width * _buffer.height);
 
-            xEventGroupWaitBits(_event_group, FLAG_IMAGE_DONE, pdTRUE, pdFALSE, portMAX_DELAY);    
+            if(_buffer.f)
+            {
+                _buffer.f(&_buffer);
+            }
+
+            // xEventGroupWaitBits(_event_group, FLAG_IMAGE_DONE, pdTRUE, pdFALSE, portMAX_DELAY);    
             
             // display_device_draw_bitmap(board_lcd->display, 0, 0, width, height, buffer[buf.index]);
 
@@ -507,24 +613,28 @@ static esp_err_t _camera_capture_stream(void)
                 goto exit_0;
             }
 
-            frame_count++;
-        }
+            // frame_count++;
+        // }
+        
 
-        if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
-            ESP_LOGE(TAG, "failed to stop stream");
-            ret = ESP_FAIL;
-            goto exit_0;
-        }
+        capture_bit = xEventGroupWaitBits(_event_group, FLAG_CAPTURE_DONE, pdTRUE, pdFALSE, 0);
+    }while(capture_bit == 0);
+
+    if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
+        ESP_LOGE(TAG, "failed to stop stream");
+        ret = ESP_FAIL;
+        goto exit_0;
+    }
 
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
-        for (int i = 0; i < BUFFER_COUNT; i++) {
-            heap_caps_free(buffer[i]);
-        }
+    for (int i = 0; i < BUFFER_COUNT; i++) {
+        heap_caps_free(buffer[i]);
+        buffer[i] = NULL;
+    }
 #endif
 
-        ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
-        ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
-    }
+    ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
+    ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
 
     ret = ESP_OK;
 
@@ -548,17 +658,17 @@ static void _memcpy_bgr_swap(void* dst, void* src, size_t length)
     // }
 }
 
-static IRAM_ATTR bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx)
-{
-    display_event_data_t *event_data = (display_event_data_t *)edata;
-    if (event_data->event == DISPLAY_EVENT_TRANS_DONE) 
-    {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xEventGroupSetBitsFromISR(_event_group, FLAG_IMAGE_DONE, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        return xHigherPriorityTaskWoken;
-    }
-    return false;
-}
+// static IRAM_ATTR bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx)
+// {
+//     display_event_data_t *event_data = (display_event_data_t *)edata;
+//     if (event_data->event == DISPLAY_EVENT_TRANS_DONE) 
+//     {
+//         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//         xEventGroupSetBitsFromISR(_event_group, FLAG_IMAGE_DONE, &xHigherPriorityTaskWoken);
+//         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+//         return xHigherPriorityTaskWoken;
+//     }
+//     return false;
+// }
 
 #endif

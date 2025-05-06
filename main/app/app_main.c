@@ -37,6 +37,8 @@ extern bool app_ui_init(void);
  * @brief Stops the UI task
  */
 extern void app_ui_stop(void);
+
+static void _camera_capture_cb(camera_buffer_t* buffer);
 /**
  * @brief Callback function that is called upon "test start" to disable the logic of the application.
  * 
@@ -77,6 +79,12 @@ static console_command_t _cmd =
 
 static console_data_t _console_data_peripheral;
 
+static camera_buffer_t _buffer = 
+{
+    .bytes_per_pixel = 3,
+    .f = _camera_capture_cb
+};
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // External functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -98,6 +106,11 @@ void app_main_init(void)
 
 #if CONFIG_IDF_TARGET_ESP32P4
     app_camera_init();
+
+    _buffer.width = display_device_get_width(board_lcd->display);
+    _buffer.height = display_device_get_height(board_lcd->display);
+    _buffer.buffer = mcu_heap_calloc(_buffer.width * _buffer.height, _buffer.bytes_per_pixel);
+    app_camera_start(&_buffer);
 #endif
 
     board_test_init();
@@ -115,6 +128,11 @@ void app_main_handle(void)
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal functions
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+static void _camera_capture_cb(camera_buffer_t* buffer)
+{
+    display_device_draw_bitmap(board_lcd->display, 0, 0, buffer->width, buffer->height, buffer->buffer);
+}
 
 #if defined(KERNEL_USES_SLINT)
 static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8_t args_len)
