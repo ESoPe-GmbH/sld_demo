@@ -55,6 +55,7 @@
 
 #define FLAG_CAPTURE_DONE (1 << 0)
 #define FLAG_IMAGE_DONE (1 << 1)
+#define FLAG_CAPTURE_FRAME (1 << 2)
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal structures and enums
@@ -69,15 +70,11 @@ static void _task_camera_capture(void *arg);
 
 static esp_err_t _camera_capture_stream(void);
 
-static void _memcpy_bgr_swap(void* dst, void* src, size_t length);
-
-// static bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx);
-
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal variables
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-static const char *TAG = "example";
+static const char *TAG = "app_camera";
 
 #if CONFIG_EXAMPLE_SCCB_I2C_INIT_BY_APP
 /**
@@ -205,6 +202,8 @@ static bool _is_capturing = false;
 
 static bool _has_camera = false;
 
+static bool _has_frame_captured = false;
+
 static camera_buffer_t _buffer = {0};
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -229,17 +228,11 @@ void app_camera_init(void)
         return;
     }
 
-    // display_set_event_callback(board_lcd->display, _cb_display_event, NULL);
-
     ret = esp_video_init(&cam_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Camera init failed with error 0x%x", ret);
         return;
     }
-
-    // display_device_swap_xy(board_lcd->display, true);
-    
-    board_set_backlight(100.0);
 
     ppa_client_config_t ppa_config = 
     {
@@ -254,14 +247,20 @@ void app_camera_init(void)
         esp_video_deinit();
         return;
     }
+    
 
-    // ret = _camera_capture_stream();
-    // if (ret != ESP_OK) {
-    //     ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
-    //     esp_video_deinit();
-    //     ppa_unregister_client(_ppa_handle);
-    //     return;
-    // }
+    int fd = open(CAM_DEV_PATH, O_RDONLY);
+    if (fd < 0) {
+        ESP_LOGE(TAG, "failed to open device");
+        ppa_unregister_client(_ppa_handle);
+        esp_video_deinit();
+        return;
+    }
+    else
+    {
+        close(fd);
+        DBG_INFO("Camera found\n");
+    }
 
     _has_camera = true;
 }
@@ -303,13 +302,9 @@ FUNCTION_RETURN_T app_camera_start(const camera_buffer_t* buffer)
     _is_capturing = true;
 
     // Start the camera capture stream
-    xTaskCreate(_task_camera_capture, "CAM", 8192, NULL, 15, NULL);
-    // esp_err_t ret = _camera_capture_stream();
-    // if (ret != ESP_OK) 
-    // {
-    //     ESP_LOGE(TAG, "Camera capture stream failed with error 0x%x", ret);
-    //     return FUNCTION_RETURN_EXECUTION_ERROR;
-    // }
+    xTaskCreate(_task_camera_capture, "CAM", 8192, NULL, 7, NULL);
+
+    app_camera_capture_frame();
 
     return FUNCTION_RETURN_OK;
 }
@@ -328,6 +323,23 @@ FUNCTION_RETURN_T app_camera_stop(void)
         xEventGroupSetBits(_event_group, FLAG_CAPTURE_DONE);
     }
     return FUNCTION_RETURN_OK;
+}
+
+void app_camera_capture_frame(void)
+{
+    if(!_has_camera) 
+    {
+        ESP_LOGE(TAG, "Camera not initialized");
+        return;
+    }
+
+    _has_frame_captured = false;
+    xEventGroupSetBits(_event_group, FLAG_CAPTURE_FRAME);
+}
+
+bool app_camera_has_frame_captured(void)
+{
+    return _has_frame_captured;
 }
 
 bool app_camera_is_initialized(void)
@@ -356,9 +368,6 @@ static esp_err_t _camera_capture_stream(void)
 {    
     int fd;
     esp_err_t ret;
-    int fmt_index = 0;
-    uint32_t frame_size;
-    uint32_t frame_count;
     struct v4l2_buffer buf;
     uint8_t *buffer[BUFFER_COUNT];
 #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
@@ -476,6 +485,9 @@ static esp_err_t _camera_capture_stream(void)
     ESP_LOGI(TAG, "Capture %s format frames", (char *)fmtdesc.description);
     ESP_LOGI(TAG, "\twidth:  %" PRIu32, format.fmt.pix.width);
     ESP_LOGI(TAG, "\theight: %" PRIu32, format.fmt.pix.height);
+    ESP_LOGI(TAG, "Target size");
+    ESP_LOGI(TAG, "\twidth:  %" PRIu32, (uint32_t)_buffer.width);
+    ESP_LOGI(TAG, "\theight: %" PRIu32, (uint32_t)_buffer.height);
     
     memset(&req, 0, sizeof(req));
     req.count  = BUFFER_COUNT;
@@ -533,11 +545,10 @@ static esp_err_t _camera_capture_stream(void)
 
     do
     {
+        EventBits_t events = xEventGroupWaitBits(_event_group, FLAG_CAPTURE_FRAME | FLAG_CAPTURE_DONE, pdTRUE, pdFALSE, portMAX_DELAY);    
 
-        frame_count = 0;
-        frame_size = 0;
-        // int64_t start_time_us = esp_timer_get_time();
-        // while (esp_timer_get_time() - start_time_us < (CAPTURE_SECONDS * 1000 * 1000)) {
+        if((events & FLAG_CAPTURE_DONE) == 0)
+        {
             memset(&buf, 0, sizeof(buf));
             buf.type   = type;
             buf.memory = MEMORY_TYPE;
@@ -546,18 +557,12 @@ static esp_err_t _camera_capture_stream(void)
                 ret = ESP_FAIL;
                 goto exit_0;
             }
-
-            frame_size += buf.bytesused;
-
-#if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
+    
+    #if CONFIG_EXAMPLE_VIDEO_BUFFER_TYPE_USER
             buf.m.userptr = (unsigned long)buffer[buf.index];
             buf.length = buffer_size[buf.index];
-#endif
-            // for(int i = 0; i < height; i++)
-            // {
-            //     memcpy(display_buffer + i * width * 3, buffer[buf.index] + i * format.fmt.pix.width * 3, width * 3);
-            // }
-
+    #endif
+    
             ppa_srm_oper_config_t srm_config = 
             {
                 .in = {
@@ -587,37 +592,37 @@ static esp_err_t _camera_capture_stream(void)
                     // .buffer_size = width * height * 3
                 },
                 .mode = PPA_TRANS_MODE_BLOCKING,
-                // .scale_x = (float)width / (float)format.fmt.pix.width,
-                // .scale_y = (float)height / (float)format.fmt.pix.height,
+                // .scale_x = (float)_buffer.width / (float)format.fmt.pix.width,
+                // .scale_y = (float)_buffer.height / (float)format.fmt.pix.height,
                 .scale_x = 1.0f,
                 .scale_y = 1.0f,
                 .rotation_angle = PPA_SRM_ROTATION_ANGLE_180,
             };
             ESP_LOGI(TAG, "scale_x: %f, scale_y: %f", srm_config.scale_x, srm_config.scale_y);
             ppa_do_scale_rotate_mirror(_ppa_handle, &srm_config);
-            // display_device_draw_bitmap(board_lcd->display, 0, 0, width, height, display_buffer);
+            
             memcpy(_buffer.buffer, display_buffer, _buffer.bytes_per_pixel * _buffer.width * _buffer.height);
-
+    
             if(_buffer.f)
             {
                 _buffer.f(&_buffer);
             }
-
-            // xEventGroupWaitBits(_event_group, FLAG_IMAGE_DONE, pdTRUE, pdFALSE, portMAX_DELAY);    
-            
-            // display_device_draw_bitmap(board_lcd->display, 0, 0, width, height, buffer[buf.index]);
-
+            _has_frame_captured = true;
+    
             if (ioctl(fd, VIDIOC_QBUF, &buf) != 0) {
                 ESP_LOGE(TAG, "failed to queue video frame");
                 ret = ESP_FAIL;
                 goto exit_0;
-            }
+            }        
 
-            // frame_count++;
-        // }
-        
+            capture_bit = xEventGroupWaitBits(_event_group, FLAG_CAPTURE_DONE, pdTRUE, pdFALSE, 0);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Stop capture");
+            capture_bit = FLAG_CAPTURE_DONE;
+        }
 
-        capture_bit = xEventGroupWaitBits(_event_group, FLAG_CAPTURE_DONE, pdTRUE, pdFALSE, 0);
     }while(capture_bit == 0);
 
     if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
@@ -633,9 +638,6 @@ static esp_err_t _camera_capture_stream(void)
     }
 #endif
 
-    ESP_LOGI(TAG, "\tsize:   %" PRIu32, frame_size / frame_count);
-    ESP_LOGI(TAG, "\tFPS:    %" PRIu32, frame_count / CAPTURE_SECONDS);
-
     ret = ESP_OK;
 
 exit_0:
@@ -643,32 +645,5 @@ exit_0:
     close(fd);
     return ret;
 }
-
-static void _memcpy_bgr_swap(void* dst, void* src, size_t length)
-{
-    memcpy(dst, src, length);
-    // for(size_t i = 0; i < length; i += 3)
-    // {
-    //     uint8_t* dst1 = dst + i;
-    //     uint8_t* src1 = src + i;
-
-    //     dst1[0] = src1[2];
-    //     dst1[1] = src1[0];
-    //     dst1[2] = src1[1];
-    // }
-}
-
-// static IRAM_ATTR bool _cb_display_event(display_handle_t panel, display_event_data_t *edata, void *user_ctx)
-// {
-//     display_event_data_t *event_data = (display_event_data_t *)edata;
-//     if (event_data->event == DISPLAY_EVENT_TRANS_DONE) 
-//     {
-//         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//         xEventGroupSetBitsFromISR(_event_group, FLAG_IMAGE_DONE, &xHigherPriorityTaskWoken);
-//         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-//         return xHigherPriorityTaskWoken;
-//     }
-//     return false;
-// }
 
 #endif

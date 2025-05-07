@@ -16,6 +16,7 @@
 
 #include "module_public.h"
 #include "module/enum/function_return.h"
+#if CONFIG_IDF_TARGET_ESP32P4
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Definitions for configuration
@@ -43,7 +44,7 @@ typedef void (*camera_cb_t)(camera_buffer_t* buffer);
 struct camera_buffer_s
 {
     void* user;
-    uint8_t *buffer;
+    void *buffer;
     size_t width;
     size_t height;
     size_t bytes_per_pixel;
@@ -77,6 +78,10 @@ FUNCTION_RETURN_T app_camera_start(const camera_buffer_t* buffer);
  * */
 FUNCTION_RETURN_T app_camera_stop(void);
 
+void app_camera_capture_frame(void);
+
+bool app_camera_has_frame_captured(void);
+
 /**
  * Checks if the camera is initialized
  * @return true if the camera is initialized, false otherwise
@@ -89,5 +94,6 @@ bool app_camera_is_initialized(void);
  * */
 bool app_camera_is_capturing(void);
 
+#endif
 
 #endif /* APP_APP_CAMERA_H_ */

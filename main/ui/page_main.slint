@@ -98,6 +98,13 @@ export component MainPage inherits Page {
                 }
                 icon: @image-url("assets/esope.png");
             }
+
+            if(Logic.has-camera): Button {
+                clicked => {
+                    Navigation.current-screen = Screens.Camera
+                }
+                text: "📷";
+            }
         }
     }
 
