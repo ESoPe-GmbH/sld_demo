@@ -135,6 +135,21 @@ bool app_ui_init(void)
         .rotation = display_device_get_width(board_lcd->display) > display_device_get_height(board_lcd->display) ? LV_DISP_ROTATION_0 : LV_DISP_ROTATION_90
     };
 
+    if(board_lcd->data_width == 24)
+    {
+        DBG_INFO("Using RGB888 color format\n");
+        lvgl_helper.color_format = LV_COLOR_FORMAT_RGB888;
+    }
+    else if(board_lcd->data_width == 16)
+    {
+        DBG_INFO("Using RGB565 color format\n");
+        lvgl_helper.color_format = LV_COLOR_FORMAT_RGB565;
+    }
+    else
+    {
+        lvgl_helper.color_format = LV_COLOR_FORMAT_UNKNOWN;
+    }
+
     lvgl_helper_init(&lvgl_helper);
 
     return true;
@@ -148,7 +163,7 @@ static void _ui_init(lv_display_t *disp)
 {
     _show_screen(LCD_ACTIVE_SCREEN_MAIN);
 
-    board_set_backlight(100.0);
+    board_set_backlight(60.0);
 
     lv_timer_create(_timer_runtime, 1000, NULL);
 }

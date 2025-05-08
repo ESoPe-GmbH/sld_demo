@@ -18,7 +18,6 @@
 #include "module/eeprom/eeprom_i2c.h"
 
 
-#include "module/flash/flash_esp.h"
 #include "esp_partition.h"
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -61,10 +60,9 @@ static display_sld_hardware_t _sld_hw =
             .de = GPIO6,
             .hsync = GPIO15,
             .vsync = GPIO7,
-            .data_width = 16,
-            .disp_en = GPIO2
-        },
-        .on_frame_trans_done = NULL
+            .data_width = 24,
+            .disp_en = GPIO50
+        }
     },
     .backlight = 
     {
@@ -75,11 +73,11 @@ static display_sld_hardware_t _sld_hw =
     .touch = 
     {        
         .i2c = &_i2c_touch,
-        .io_reset = GPIO3,
+        .io_reset = GPIO51,
     }
 };
 
-static mcu_uart_hw_config_t _uart_hw_config_485 = {
+static mcu_uart_hw_config_t _uart_hw_config_peripheral = {
 	.unit = 1,
 	.io_tx = GPIO48,
 	.io_rx = GPIO47,
@@ -91,7 +89,7 @@ static mcu_uart_hw_config_t _uart_hw_config_485 = {
 	.transmit_interrupt_level = MCU_INT_LVL_MED
 };
 
-static mcu_uart_config_t _uart_config_485 = {
+static mcu_uart_config_t _uart_config_peripheral = {
 	.baudrate = 250000,
 	.databits = 8,
 	.parity = 'N',
@@ -111,7 +109,9 @@ display_sld_handle_t board_lcd = NULL;
 
 mcu_uart_t board_uart_peripheral;
 
-flash_device_t board_flash_device_data;
+comm_t board_comm_peripheral;
+
+// flash_device_t board_flash_device_data;
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
@@ -137,7 +137,7 @@ void board_init(void)
 	dbg_set_comm(&_comm_debug);
 #endif
 
-	i2c_init(&_i2c_touch, 0, GPIO4, GPIO13);
+	i2c_init(&_i2c_touch, 0, GPIO52, GPIO13);
 	i2c_set_frq(&_i2c_touch, 400000);
 
     mcu_io_set_dir(GPIO14, MCU_IO_DIR_IN);
@@ -146,7 +146,9 @@ void board_init(void)
     board_lcd = display_sld_init_hardware(&_sld_hw);
     DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
 
-	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_485, &_uart_config_485);
+	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_peripheral, &_uart_config_peripheral);
+	mcu_uart_set_param(board_uart_peripheral, 115200, 8, 'N', 1);
+	mcu_uart_create_comm_handler(board_uart_peripheral, &board_comm_peripheral);
 
 	// Enable Interrupts
 	mcu_enable_interrupt();

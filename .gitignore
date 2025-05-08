@@ -354,3 +354,5 @@ components/esopublic/
 
 #SVN
 .svn
+sdkconfig
+sdkconfig.old

@@ -9,8 +9,9 @@
 #include "board.h"
 #include "mcu/sys.h"
 #include "module/console/dbg/debug_console.h"
+#include "sdkconfig.h"
 
-#if CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32S3 && !CONFIG_SLD_C_W_S3_BT817
 
 #include "module/lcd_touch/lcd_touch_calibration.h"
 #include "module/lcd_touch/driver/st1633i/st1633i.h"
@@ -127,6 +128,8 @@ display_sld_handle_t board_lcd = NULL;
 
 mcu_uart_t board_uart_peripheral;
 
+comm_t board_comm_peripheral;
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Prototypes
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -161,6 +164,8 @@ void board_init(void)
     DBG_INFO("Display %s initialized\n", board_lcd == NULL ? "not" : board_lcd->screen_diagonal);
 
 	board_uart_peripheral = mcu_uart_create(&_uart_hw_config_485, &_uart_config_485);
+	mcu_uart_set_param(board_uart_peripheral, 115200, 8, 'N', 1);
+	mcu_uart_create_comm_handler(board_uart_peripheral, &board_comm_peripheral);
 
 	// Enable Interrupts
 	mcu_enable_interrupt();
