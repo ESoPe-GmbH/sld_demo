@@ -28,10 +28,34 @@ endif()
 if(DEFINED ENV{FLASHERDIR})
         # The following line is needed when creating eso files in the format of ESoPe GmbH. For this you need the Flasher tool of ESoPe GmbH.
         # This is needed to use the secure software update mechanisms implemented from ESoPe.
-        add_custom_target(${PROJECT_NAME} ALL
-                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config.json"
-                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_compressed.json"
-                )
 
-        add_dependencies(${PROJECT_NAME} gen_project_binary)
+        if(IDF_TARGET STREQUAL "esp32p4")
+                message("Build for SLD_C_W_P4_C6")
+                add_custom_target(${PROJECT_NAME} ALL
+                        COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_p4.json"
+                        COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_p4_compressed.json"
+                        )
+        
+                add_dependencies(${PROJECT_NAME} gen_project_binary)
+        endif()
+
+        if(IDF_TARGET STREQUAL "esp32s3")
+                if(CONFIG_SLD_C_W_S3_BT817)
+                        message("Build for SLD_C_W_S3_BT817")
+                        add_custom_target(${PROJECT_NAME} ALL
+                                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_s3_bt817.json"
+                                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_s3_bt817_compressed.json"
+                                )
+                
+                        add_dependencies(${PROJECT_NAME} gen_project_binary)
+                else()
+                        message("Build for SLD_C_W_S3")
+                        add_custom_target(${PROJECT_NAME} ALL
+                                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_s3.json"
+                                COMMAND "$ENV{FLASHERDIR}\\Flasher.Cli.exe" "${project_dir}/config_s3_compressed.json"
+                                )
+                
+                        add_dependencies(${PROJECT_NAME} gen_project_binary)
+                endif()
+        endif()
 endif()
