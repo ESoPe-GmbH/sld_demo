@@ -11,8 +11,7 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_hosted:
-    git: https://github.com/TiKoESoPe/esp-hosted-mcu.git
-    version: bugfix/reset-active-high-low
+    version: '*'
     rules:
       - if: "target in [esp32p4]"
   espressif/esp_wifi_remote:
