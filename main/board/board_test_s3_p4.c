@@ -54,6 +54,7 @@ void board_test_init(void)
 
 static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8_t args_len)
 {
+#if CONFIG_IDF_TARGET_ESP32S3
     // Reset all I/O to use them as GPIO in test
     for(int i = 1; i < 22; i++)
     {
@@ -67,6 +68,12 @@ static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8
     {
         mcu_io_reset(i);
     }
+#elif CONFIG_IDF_TARGET_ESP32P4
+    // I/O connector
+    mcu_io_reset(47);
+    mcu_io_reset(48);
+    mcu_io_reset(49);
+#endif
 }
 
 #endif
