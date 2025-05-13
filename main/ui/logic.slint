@@ -13,9 +13,13 @@ export global Logic {
 
     in-out property <image> camera-image;
 
+    in-out property <image> image-image;
+
     callback start-camera(width : length, height : length);
 
     callback stop-camera();
 
     callback camera-update();
+
+    callback image-update();
 }

@@ -1,15 +1,33 @@
 import { Button, GridBox } from "std-widgets.slint";
 import { Page, Navigation, Screens } from "common.slint";
+import { Logic } from "logic.slint";
 
 export component ImagePage inherits Page {
     Rectangle {
         padding: 0;
-        Image {
+        // img_0 := Image {
+        //     padding: 0;
+        //     horizontal-alignment: left;
+        //     image-fit: ImageFit.fill;
+        //     image-rendering: ImageRendering.smooth;
+        //     visible: true;
+        //     source: @image-url("assets/dmb_0.png");
+        // }
+        // img_14 := Image {
+        //     padding: 0;
+        //     horizontal-alignment: left;
+        //     image-fit: ImageFit.fill;
+        //     image-rendering: ImageRendering.smooth;
+        //     visible: false;
+        //     source: @image-url("assets/dmb_14.png");
+        // }
+
+        img := Image {
             padding: 0;
             horizontal-alignment: left;
             image-fit: ImageFit.fill;
             image-rendering: ImageRendering.smooth;
-            source: @image-url("assets/landscape.png");
+            source: Logic.image-image;
         }
 
         Button {
@@ -20,6 +38,25 @@ export component ImagePage inherits Page {
             height: parent.height / 10;
             clicked => {
                 Navigation.current-screen = Screens.Main;
+            }
+        }
+
+        timer := Timer {
+            interval: 3s;
+            running: true;
+            triggered() => 
+            {
+                Logic.image-update()
+                // if(img_0.visible)
+                // {
+                //     img_0.visible = false;
+                //     img_14.visible = true;
+                // }
+                // else
+                // {
+                //     img_14.visible = false;
+                //     img_0.visible = true;
+                // }
             }
         }
     }

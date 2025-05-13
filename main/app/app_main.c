@@ -10,6 +10,7 @@
 #include "board/board_test.h"
 #include "app_webserver.h"
 #include "app_camera.h"
+#include "esp_partition.h"
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal definitions
@@ -57,6 +58,8 @@ static void _dbc_test_handle(void* obj, console_data_t* data, char** args, uint8
  */
 static FUNCTION_RETURN _cmd_callback(console_data_t* data, char** args, uint8_t args_len);
 
+static FUNCTION_RETURN _cmd_erase_callback(console_data_t* data, char** args, uint8_t args_len);
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
 // Internal variables
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -73,6 +76,15 @@ static console_command_t _cmd =
     .fnc_exec = _cmd_callback,
     .use_array_param = true,
     .explanation = "Set the backlight duty cycle"
+};
+
+/// Structure for the erase console command
+static console_command_t _cmd_erase = 
+{
+    .command = "erase",
+    .fnc_exec = _cmd_erase_callback,
+    .use_array_param = true,
+    .explanation = "Erase flash partition"
 };
 
 static console_data_t _console_data_peripheral;
@@ -105,6 +117,7 @@ void app_main_init(void)
     debug_console_register_test_callback(&_dbc_test, NULL, _dbc_test_handle);
 #endif
 	console_add_command(&_cmd);
+	console_add_command(&_cmd_erase);
 }
 
 #if SYSTEM_ENABLE_APP_MAIN_HANDLE
@@ -134,5 +147,28 @@ static FUNCTION_RETURN _cmd_callback(console_data_t* data, char** args, uint8_t 
 
 		return console_set_response_dynamic(data, FUNCTION_RETURN_OK, 5, "%u", dc);
 	}
+	return FUNCTION_RETURN_PARAM_ERROR;
+}
+
+static FUNCTION_RETURN _cmd_erase_callback(console_data_t* data, char** args, uint8_t args_len)
+{
+    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fdata");
+    if (!partition) 
+    {
+        DBG_ERROR("Error loading partition\n");
+        return FUNCTION_RETURN_DEVICE_ERROR;
+    }
+
+    esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
+
+    if(err == ESP_OK)
+    {
+        return console_set_response_static(data, FUNCTION_RETURN_OK, "Erase done");
+    }   
+    else
+    {
+        return console_set_response_static(data, FUNCTION_RETURN_EXECUTION_ERROR, "Erase failed");
+    }
+
 	return FUNCTION_RETURN_PARAM_ERROR;
 }

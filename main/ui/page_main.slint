@@ -10,11 +10,13 @@ component LabeledValue inherits HorizontalBox {
     // width of a space char
     padding: 0;
     Text {
+        font-size: 24px;
         horizontal-alignment: left;
         text: label;
     }
 
     Text {
+        font-size: 24px;
         horizontal-alignment: right;
         text: text;
     }
@@ -37,17 +39,19 @@ export component MainPage inherits Page {
         VerticalBox {
             padding: 0;
             spacing: 0;
-            x: root.width - 120px;
+            x: root.width - 240px;
             y: 10px;
             height: 20px;
             alignment: space-around;
             Text {
                 padding: 0;
+                font-size: 24px;
                 text: "Display: \{Logic.display_size}\"";
             }
 
             Text {
                 padding: 0;
+                font-size: 24px;
                 text: "Resolution: \{Logic.width / 1px} x \{Logic.height / 1px}";
             }
         }
@@ -58,7 +62,7 @@ export component MainPage inherits Page {
         Text {
             vertical-alignment: top;
             text: "Slint Demo";
-            font-size: 24px;
+            font-size: 48px;
         }
     }
 
@@ -78,6 +82,8 @@ export component MainPage inherits Page {
         }
 
         HorizontalBox {
+            height: 100px;
+
             Button {
                 clicked => {
                     Logic.counter += 1

@@ -43,6 +43,10 @@ static esp_err_t _info_get_handler(httpd_req_t *req);
 
 static esp_err_t _ota_update_handler(httpd_req_t *req);
 
+static esp_err_t _parse_address(const char *uri, uint32_t *address_out);
+
+static esp_err_t _write_handler(httpd_req_t *req);
+
 static void _reboot(void* pvArgs);
 
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -114,6 +118,7 @@ void app_webserver_init(void)
     }
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
+    http_config.uri_match_fn = httpd_uri_match_wildcard;
     http_config.server_port = CONFIG_SLD_DEMO_WEBSERVER_PORT;
 
     DBG_INFO("Starting server on port: '%d'\n", http_config.server_port);
@@ -150,6 +155,14 @@ void app_webserver_init(void)
             .user_ctx  = NULL
         };
         httpd_register_uri_handler(_server, &html_uri);
+
+        httpd_uri_t write_uri = {
+            .uri = "/write/*",
+            .method = HTTP_POST,
+            .handler = _write_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(_server, &write_uri);
     }
     else
     {
@@ -338,6 +351,68 @@ static esp_err_t _ota_update_handler(httpd_req_t *req)
 
     xTaskCreate(_reboot, "reboot_task", 2048, NULL, 5, NULL);
 
+    return ESP_OK;
+}
+
+
+static esp_err_t _parse_address(const char *uri, uint32_t *address_out)
+{
+    const char *addr_str = strstr(uri, "/write/");
+    if (!addr_str) 
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    addr_str += strlen("/write/");
+    *address_out = strtoul(addr_str, NULL, 16);
+    return ESP_OK;
+}
+
+
+static esp_err_t _write_handler(httpd_req_t *req)
+{    
+    uint32_t address;
+    if (_parse_address(req->uri, &address) != ESP_OK) 
+    {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid address");
+        return ESP_FAIL;
+    }
+
+    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fdata");
+    if (!partition) 
+    {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Partition not found");
+        return ESP_FAIL;
+    }
+
+    if (address >= partition->size) 
+    {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Address out of range");
+        return ESP_FAIL;
+    }
+
+    char buf[512];
+    int total_len = req->content_len;
+    int received = 0;
+
+    while (received < total_len) 
+    {
+        int len = httpd_req_recv(req, buf, sizeof(buf));
+        if (len <= 0) 
+        {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to receive data");
+            return ESP_FAIL;
+        }
+
+        if (esp_partition_write(partition, address + received, buf, len) != ESP_OK) 
+        {
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
+            return ESP_FAIL;
+        }
+
+        received += len;
+    }
+
+    httpd_resp_sendstr(req, "Write successful");
     return ESP_OK;
 }
 

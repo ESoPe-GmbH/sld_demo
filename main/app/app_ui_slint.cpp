@@ -16,6 +16,7 @@
 using namespace std::chrono_literals;
 
 #if CONFIG_IDF_TARGET_ESP32P4
+slint::Image _get_image_image();
 slint::Image _get_camera_image();
 #endif
 
@@ -28,6 +29,10 @@ extern "C"
     #include "module/comm/dbg.h"
     #include "module/lcd_touch/lcd_touch_esp32.h"
     #include "app_camera.h"
+#if CONFIG_IDF_TARGET_ESP32P4
+    #include "driver/ppa.h"
+    #include "esp_partition.h"
+#endif
 
     static void _task_window(void* param);
     
@@ -49,6 +54,10 @@ extern "C"
         .bytes_per_pixel = 3,
         .f = _camera_capture_cb,
     };
+
+    static void* _image_buffer = NULL;
+
+    static ppa_client_handle_t _ppa_handle = NULL;
 #endif
 }
 
@@ -71,6 +80,22 @@ extern "C" bool app_ui_init(void)
     _buffer.width = display_device_get_width(board_lcd->display);
     _buffer.height = display_device_get_height(board_lcd->display);
     _buffer.buffer = mcu_heap_calloc(_buffer.width * _buffer.height, _buffer.bytes_per_pixel);
+
+    _image_buffer = mcu_heap_calloc(width * height, 3);
+
+    // ppa_client_config_t ppa_config = 
+    // {
+    //     .oper_type = PPA_OPERATION_SRM,
+    //     .max_pending_trans_num = 1,
+    //     .data_burst_length = PPA_DATA_BURST_LENGTH_16
+    // };
+
+    // ppa_register_client(&ppa_config, &_ppa_handle);
+    // if (_ppa_handle == NULL) 
+    // {
+    //     DBG_ERROR("Cannot register ppa client\n");
+    //     return false;
+    // }
 #endif
 
     DBG_INFO("Initialize %d x %d\n", width, height);
@@ -150,13 +175,14 @@ extern "C"
     {
         auto ui = AppWindow::create();
         // Use this to make the UI look bigger on the 5" display when software should be scaled for multiple displays.
-        if (display_device_get_width(board_lcd->display) > 500) 
-        {
-            ui->window().dispatch_scale_factor_change_event(2.);
-        }
+        // if (display_device_get_width(board_lcd->display) > 500) 
+        // {
+        //     ui->window().dispatch_scale_factor_change_event(2.);
+        // }
         /* Show it on the screen and run the event loop */
         ui->global<Logic>().set_version(slint::SharedString(version_get_string()));
         ui->global<Logic>().set_display_size(slint::SharedString(board_lcd->screen_diagonal));
+        ui->global<Logic>().set_image_image(_get_image_image());
 
 #if CONFIG_IDF_TARGET_ESP32P4
         ui->global<Logic>().on_start_camera([&ui](float width, float height){
@@ -180,6 +206,9 @@ extern "C"
                 }
             }
         });
+        ui->global<Logic>().on_image_update([&ui](){
+            ui->global<Logic>().set_image_image(_get_image_image());
+        });
 #endif
 
         slint::Timer timer_update_runtime;
@@ -200,6 +229,163 @@ extern "C"
 }
 
 #if CONFIG_IDF_TARGET_ESP32P4
+slint::Image _get_image_image()
+{
+    DBG_INFO("_get_image\n");
+    if(_image_buffer)
+    {
+        static int count = 0;
+
+        uint32_t address = count * (1024 * 600 * 3);
+
+        uint32_t width = display_device_get_width(board_lcd->display);
+        uint32_t height = display_device_get_height(board_lcd->display);
+        
+        const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fdata");
+        if (!partition) 
+        {
+            DBG_ERROR("Error loading partition\n");
+            return slint::Image();
+        }
+
+        // Buffer for reading the flash
+        uint8_t buffer_read[1024];
+        // Source pointer RGB565
+        uint8_t* src = buffer_read;
+        // Destination pointer RGB888
+        uint8_t* ptr = (uint8_t*)_image_buffer;
+        // Offset inside the currently read buffer
+        size_t buffer_offset = 0;
+        // Offset for calculating the read address
+        size_t offset = 0;
+
+        size_t max_size = 1024 * 600 * 3;
+
+        for(int i = 0; i < max_size; i += sizeof(buffer_read))
+        {
+            esp_err_t err = esp_partition_read(partition, address + i, buffer_read, sizeof(buffer_read));
+            if(err != ESP_OK)
+            {
+                DBG_ERROR("Error reading flash\n");
+                return slint::Image();
+            }
+
+            memcpy(ptr, src, sizeof(buffer_read));
+
+            ptr += sizeof(buffer_read);
+        }
+
+        // for(int i = 0; i < width; i++)
+        // {
+        //     for(int j = 0; j < height; j++)
+        //     {
+        //         if(buffer_offset == 0)
+        //         {
+        //             esp_err_t err = esp_partition_read(partition, address + offset, buffer_read, sizeof(buffer_read));
+        //             if(err != ESP_OK)
+        //             {
+        //                 DBG_ERROR("Error reading flash\n");
+        //                 return slint::Image();
+        //             }
+        //         }
+
+        //         // uint16_t pix = ((uint16_t)src[0] << 8) | src[1];
+        //         // // Take pixel and swap r and b because of slint
+        //         // uint8_t r5 = (pix >> (6+5)) & 0x01F;
+        //         // uint8_t g6 = (pix >> 5) & 0x03F;
+        //         // uint8_t b5 = pix & 0x01F;
+        //         // // Shift the color to the higher positions
+
+        //         // uint8_t r8 = (r5 << 3) | (r5 >> 2); // 5 -> 8 Bit
+        //         // uint8_t g8 = (g6 << 2) | (g6 >> 4); // 6 -> 8 Bit
+        //         // uint8_t b8 = (b5 << 3) | (b5 >> 2); // 5 -> 8 Bit
+
+        //         // ptr[1] = r8;
+        //         // ptr[2] = g8;
+        //         // ptr[0] = b8;
+
+        //         // // ptr[0] <<= 3;
+        //         // // ptr[1] <<= 2;
+        //         // // ptr[2] <<= 3;
+
+        //         // // Increment pointer
+        //         // ptr += 3;
+        //         // src += 2;
+        //         // Increment offset in the buffer to detect overflow
+        //         buffer_offset += 2;
+        //         if(buffer_offset >= sizeof(buffer_read))
+        //         {
+        //             buffer_offset = 0;
+        //             src = buffer_read;
+        //             offset += sizeof(buffer_read);
+        //         }
+        //     }
+        // }
+
+        // TODO: Convert RGB565 from image to RGB888
+    
+        // ppa_srm_oper_config_t srm_config = 
+        // {
+        //     .in = {
+        //         .buffer = NULL, // TODO:
+        //         .pic_w = 1024,
+        //         .pic_h = 600,
+        //         .block_w = _buffer.width,
+        //         .block_h = _buffer.height,
+        //         .block_offset_x = 0,
+        //         .block_offset_y = 0,
+        //         .srm_cm = PPA_SRM_COLOR_MODE_RGB565,
+        //         .yuv_range = PPA_COLOR_RANGE_FULL,
+        //         .yuv_std = PPA_COLOR_CONV_STD_RGB_YUV_BT601,
+        //     },
+        //     .out = {
+        //         .buffer = _image_buffer,
+        //         .buffer_size = width * height * 3,
+        //         .pic_w = width,
+        //         .pic_h = height,
+        //         .block_offset_x = 0,
+        //         .block_offset_y = 0,
+        //         .srm_cm = PPA_SRM_COLOR_MODE_RGB888,
+        //         .yuv_range = PPA_COLOR_RANGE_FULL,
+        //         .yuv_std = PPA_COLOR_CONV_STD_RGB_YUV_BT601,
+        //     },
+        //     .rotation_angle = PPA_SRM_ROTATION_ANGLE_180,
+        //     .scale_x = 1.0f,
+        //     .scale_y = 1.0f,
+        //     .mirror_x = false,
+        //     .mirror_y = false,
+
+        //     .mode = PPA_TRANS_MODE_BLOCKING,
+        // };
+        // ppa_do_scale_rotate_mirror(_ppa_handle, &srm_config);
+        // Test image red / green / blue
+        // uint8_t* ptr = (uint8_t*)_image_buffer;
+
+        // for(int i = 0; i < width; i++)
+        // {
+        //     for(int j = 0; j < height; j++)
+        //     {
+        //         for(int k = 0; k < 3; k++)
+        //         {
+        //             ptr[k] = k == count ? 0xFF : 0;
+        //         }
+        //         ptr += 3;
+        //     }
+        // }
+
+        // count = (count + 1) % 3;
+        count = (count + 1) % 2;
+    
+        // Create an RGB8 pixel buffer for Slint
+        slint::SharedPixelBuffer<slint::Rgb8Pixel> pixel_buffer(width, height, (slint::Rgb8Pixel*)_image_buffer);
+    
+        return slint::Image(pixel_buffer);
+    }
+    else
+    {
+        return slint::Image();
+    }
+}
 slint::Image _get_camera_image()
 {
     // Create an RGB8 pixel buffer for Slint

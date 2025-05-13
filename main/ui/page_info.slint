@@ -21,14 +21,14 @@ export component InfoPage inherits Page {
             text: "Demo Software and Description";
             wrap: TextWrap.word-wrap;
             horizontal-alignment: center;
-            font-size: 24px;
+            font-size: 48px;
         }
 
         Text {
             text: "Scan the QR-Code for the GitHub Link to this Demo.";
             wrap: TextWrap.word-wrap;
             horizontal-alignment: center;
-            font-size: 16px;
+            font-size: 24px;
         }
 
         HorizontalBox {
@@ -44,9 +44,12 @@ export component InfoPage inherits Page {
         HorizontalBox {
             alignment: end;
             spacing: 0;
-            padding: 0;
+            // padding: 0;
+            padding-top: 300px;
             Text {
+                font-size: 24px;
                 text: "powered by";
+                padding-right: 10px;
             }
 
             Image {
