@@ -127,7 +127,7 @@ extern "C" bool app_ui_init(void)
             });
     }
 
-    board_set_backlight(100.0);
+    board_set_backlight(60.0);
 
     xTaskCreate(_task_window, "DISP", 8192 * 2, NULL, 15, &_task_handle_ui);
 
