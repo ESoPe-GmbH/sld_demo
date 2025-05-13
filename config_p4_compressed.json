@@ -4,6 +4,6 @@
     "mcu":"ESP32",
     "appname":"SLD_Demo",
     "version_src":"main/app/app_main.c",
-    "compress":false,
+    "compress":true,
     "firmware":"build/flasher_args.json"
 }
