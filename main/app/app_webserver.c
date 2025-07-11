@@ -114,6 +114,7 @@ void app_webserver_init(void)
     }
 
     httpd_config_t http_config = HTTPD_DEFAULT_CONFIG();
+    http_config.stack_size = 6000;
     http_config.server_port = CONFIG_SLD_DEMO_WEBSERVER_PORT;
 
     DBG_INFO("Starting server on port: '%d'\n", http_config.server_port);
